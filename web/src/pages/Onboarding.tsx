@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError, api } from "../api/client";
 import { useAuth } from "../auth/context";
-import { CoachBubble, UserBubble } from "../components/ChatBubble";
+import { CoachBubble } from "../components/ChatBubble";
 import { Logo } from "../components/Logo";
 
 type OnboardingCopy = {
@@ -485,10 +485,6 @@ export function Onboarding() {
           topics={config.topics}
         />
 
-        {answers && currentKey !== "welcome" ? (
-          <UserBubblePreview stepKey={currentKey} answers={answers} />
-        ) : null}
-
         <div style={{ display: "flex", gap: 12, justifyContent: "space-between" }}>
           {stepIndex > 0 ? (
             <button className="btn btn-ghost" onClick={goBack}>
@@ -695,39 +691,6 @@ function StepContent({
     default:
       return null;
   }
-}
-
-function UserBubblePreview({ stepKey, answers }: { stepKey: string; answers: Answers }) {
-  let label: string | null = null;
-  switch (stepKey) {
-    case "role_identity":
-      label = answers.role_identity.trim();
-      break;
-    case "topics_authority":
-      label = [...answers.topic_authorities, answers.custom_topic.trim()]
-        .filter(Boolean)
-        .join(", ");
-      break;
-    case "content_guardrails":
-      label = answers.topic_exclusions.trim();
-      break;
-    case "target_audience":
-      label = answers.target_audience.trim();
-      break;
-    case "never_be_mistaken_for":
-      label = answers.never_be_mistaken_for.trim();
-      break;
-    case "linkedin_goal":
-      label = GOAL_OPTIONS.find((g) => g.value === answers.linkedin_goal)?.label ?? null;
-      break;
-    case "posting_cadence":
-      label = CADENCE_OPTIONS.find((c) => c.value === answers.posting_cadence)?.label ?? null;
-      break;
-    default:
-      return null;
-  }
-  if (!label) return null;
-  return <UserBubble>{label}</UserBubble>;
 }
 
 function isStepComplete(stepKey: string, a: Answers): boolean {

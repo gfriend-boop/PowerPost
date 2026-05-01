@@ -143,8 +143,32 @@ export function Dashboard() {
 
           <aside className="stack-4">
             {archetype ? (
-              <div className="card stack-3">
-                <span className="field-label">Your voice</span>
+              <Link
+                to="/voice/edit"
+                className="card stack-3"
+                style={{
+                  display: "block",
+                  textDecoration: "none",
+                  color: "inherit",
+                  position: "relative",
+                  transition: "transform 0.15s ease, box-shadow 0.2s ease",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span className="field-label">Your voice</span>
+                  <span
+                    style={{
+                      fontFamily: "var(--font-display)",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: "0.16em",
+                      textTransform: "uppercase",
+                      color: "var(--color-pink)",
+                    }}
+                  >
+                    Edit
+                  </span>
+                </div>
                 <h3 style={{ margin: 0 }}>{archetype.display_name}</h3>
                 <p className="muted" style={{ margin: 0, fontSize: 14 }}>
                   {archetype.description}
@@ -154,7 +178,17 @@ export function Dashboard() {
                     Warmth {profile.tone_warmth}/10 · Storytelling {profile.tone_storytelling}/10 · Provocation {profile.tone_provocation}/10
                   </div>
                 ) : null}
-              </div>
+                <span
+                  style={{
+                    fontSize: 13,
+                    color: "var(--color-pink)",
+                    fontWeight: 600,
+                    marginTop: 4,
+                  }}
+                >
+                  Edit my voice →
+                </span>
+              </Link>
             ) : null}
             <div className="card stack-2">
               <span className="field-label">LinkedIn</span>

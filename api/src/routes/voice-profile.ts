@@ -33,11 +33,19 @@ const CreateProfileSchema = z.object({
 });
 
 const PatchProfileSchema = z.object({
+  // Tone modifiers
   tone_warmth: z.number().int().min(1).max(10).optional(),
   tone_storytelling: z.number().int().min(1).max(10).optional(),
   tone_provocation: z.number().int().min(1).max(10).optional(),
+  // Phrase / list fields that don't affect archetype assignment
   signature_phrases: z.array(z.string().min(1).max(120)).max(3).optional(),
+  topic_authorities: z.array(z.string().min(1).max(80)).max(20).optional(),
+  topic_exclusions: z.array(z.string().min(1).max(120)).max(10).optional(),
   topic_exclusions_extra: z.array(z.string().min(1).max(120)).optional(),
+  // Free-text fields that don't affect archetype assignment
+  role_identity: z.string().min(1).max(500).optional(),
+  target_audience: z.string().min(1).max(600).optional(),
+  posting_cadence: PostingCadence.optional(),
 });
 
 function completenessScore(input: z.infer<typeof CreateProfileSchema>): number {
@@ -205,9 +213,20 @@ router.patch(
     if (body.tone_warmth !== undefined) push("tone_warmth", body.tone_warmth);
     if (body.tone_storytelling !== undefined) push("tone_storytelling", body.tone_storytelling);
     if (body.tone_provocation !== undefined) push("tone_provocation", body.tone_provocation);
+    if (body.role_identity !== undefined) push("role_identity", body.role_identity);
+    if (body.target_audience !== undefined) push("target_audience", body.target_audience);
+    if (body.posting_cadence !== undefined) push("posting_cadence", body.posting_cadence);
     if (body.signature_phrases !== undefined) {
       values.push(JSON.stringify(body.signature_phrases));
       sets.push(`signature_phrases = $${values.length}::jsonb`);
+    }
+    if (body.topic_authorities !== undefined) {
+      values.push(JSON.stringify(body.topic_authorities));
+      sets.push(`topic_authorities = $${values.length}::jsonb`);
+    }
+    if (body.topic_exclusions !== undefined) {
+      values.push(JSON.stringify(body.topic_exclusions));
+      sets.push(`topic_exclusions = $${values.length}::jsonb`);
     }
 
     if (body.topic_exclusions_extra && body.topic_exclusions_extra.length > 0) {

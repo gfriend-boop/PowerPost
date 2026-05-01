@@ -2,6 +2,7 @@ import { Navigate, Route, BrowserRouter, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth/context";
 import { AppShell } from "./components/Shell";
 import { Dashboard } from "./pages/Dashboard";
+import { EditVoice } from "./pages/EditVoice";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { Onboarding } from "./pages/Onboarding";
@@ -85,6 +86,14 @@ function Routing() {
         element={
           <ProtectedRoute requireOnboarding>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/voice/edit"
+        element={
+          <ProtectedRoute requireOnboarding>
+            <EditVoice />
           </ProtectedRoute>
         }
       />
