@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ApiError, api } from "../api/client";
 import { useAuth } from "../auth/context";
 import { CoachBubble } from "../components/ChatBubble";
@@ -83,6 +83,7 @@ type Phase =
 export function Onboarding() {
   const { user, refresh } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [config, setConfig] = useState<OnboardingConfig | null>(null);
   const [phase, setPhase] = useState<Phase>("linkedin");
   const [stepIndex, setStepIndex] = useState(0);
@@ -104,7 +105,16 @@ export function Onboarding() {
       .catch(() => setSubmitError("Failed to load onboarding"));
   }, []);
 
+  // On mount, decide where to start. If the user is returning from the
+  // Unipile hosted-auth redirect, we're waiting on the webhook to bind their
+  // account, so go straight into linkedin_pending and let the polling effect
+  // below advance us once /linkedin/status flips.
   useEffect(() => {
+    const onLinkedInReturn = location.pathname.endsWith("/linkedin-connected");
+    if (onLinkedInReturn) {
+      setPhase("linkedin_pending");
+      return;
+    }
     void api
       .get<{ connected: boolean }>("/linkedin/status")
       .then((status) => {
@@ -113,7 +123,42 @@ export function Onboarding() {
       .catch(() => {
         // ignore
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // While we're waiting for Unipile's webhook to bind the account, poll
+  // /linkedin/status so the page advances on its own when the bind lands.
+  useEffect(() => {
+    if (phase !== "linkedin_pending") return;
+    let cancelled = false;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const tick = async () => {
+      if (cancelled) return;
+      attempts++;
+      try {
+        const status = await api.get<{ connected: boolean }>("/linkedin/status");
+        if (cancelled) return;
+        if (status.connected) {
+          await refresh();
+          setPhase("questionnaire");
+          return;
+        }
+      } catch {
+        // network blip — keep polling
+      }
+      if (!cancelled && attempts < 60) {
+        timer = setTimeout(tick, 2500);
+      }
+    };
+
+    void tick();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [phase, refresh]);
 
   useEffect(() => {
     saveDraft(answers);
@@ -200,18 +245,39 @@ export function Onboarding() {
     return (
       <PageBg>
         <CoachBubble>
-          <p>Finish the LinkedIn connection in the new tab. Come back when you are done.</p>
+          <h2 style={{ marginTop: 0 }}>Almost there.</h2>
+          <p>
+            Finishing your LinkedIn connection. This page will move on by itself the moment
+            we receive confirmation from Unipile. Usually a few seconds.
+          </p>
+          <p className="muted" style={{ fontSize: 14, marginBottom: 0 }}>
+            If nothing happens after a minute, the webhook may not have reached us. Use the
+            button below to check manually.
+          </p>
         </CoachBubble>
         <Center>
+          <Spinner />
           <button
-            className="btn btn-secondary"
+            className="btn btn-ghost"
             onClick={async () => {
-              await refresh();
-              setPhase("questionnaire");
+              try {
+                const status = await api.get<{ connected: boolean }>("/linkedin/status");
+                if (status.connected) {
+                  await refresh();
+                  setPhase("questionnaire");
+                } else {
+                  setSubmitError(
+                    "We do not see a connected LinkedIn account yet. Try again or contact support.",
+                  );
+                }
+              } catch {
+                setSubmitError("Could not check connection status");
+              }
             }}
           >
-            I have connected my LinkedIn
+            Check now
           </button>
+          {submitError ? <ErrorText message={submitError} /> : null}
         </Center>
       </PageBg>
     );

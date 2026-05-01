@@ -79,7 +79,7 @@ const DEMO_POSTS: UnipilePost[] = [
 
 export async function startHostedAuth(
   redirectTo: string,
-  userId: string 
+  userId: string,
 ): Promise<UnipileHostedAuthLink> {
   if (!isUnipileConfigured()) {
     return {
@@ -87,39 +87,51 @@ export async function startHostedAuth(
       account_id: "demo-account",
     };
   }
-  const expiresOn = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+  const notifyUrl = config.unipile.notifyUrl
+    ? `${config.unipile.notifyUrl.replace(/\/$/, "")}/webhooks/unipile`
+    : null;
+  if (!notifyUrl) {
+    console.warn(
+      "[unipile] UNIPILE_NOTIFY_URL is not set. Webhook bind step will not run.",
+    );
+  }
+
+  const payload = {
+    type: "create" as const,
+    providers: ["LINKEDIN"] as const,
+    api_url: `https://${config.unipile.dsn}`,
+    success_redirect_url: redirectTo,
+    failure_redirect_url: redirectTo,
+    expiresOn: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+    notify_url: notifyUrl ?? undefined,
+    // `name` is the field Unipile echoes back in the account-connected webhook.
+    // We use it to bind the resulting account_id to the PowerPost user.
+    name: userId,
+  };
+
+  console.log("Sending Unipile hosted auth payload:", JSON.stringify(payload, null, 2));
+
   const res = await fetch(`https://${config.unipile.dsn}/api/v1/hosted/accounts/link`, {
     method: "POST",
     headers: {
       "X-API-KEY": config.unipile.apiKey,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      type: "create",
-      providers: ["LINKEDIN"],
-      api_url: `https://${config.unipile.dsn}`,
-      success_redirect_url: redirectTo,
-      failure_redirect_url: redirectTo,
-      expiresOn,
-      notify_url: "https://laughing-spoon-4q77w65j9vvrfjjp5-4000.app.github.dev/webhooks/unipile",
-      name: userId,
-    }),
+    body: JSON.stringify(payload),
   });
-  console.log("Sending Unipile hosted auth payload:", JSON.stringify(payload, null, 2));
-const res = await fetch(`https://${config.unipile.dsn}/api/v1/hosted/accounts/link`, {
-  method: "POST",
-  headers: {
-    "X-API-KEY": config.unipile.apiKey,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify(payload),
-});
 
   if (!res.ok) {
-    throw new Error(`Unipile hosted auth failed: ${res.status} ${await res.text()}`);
+    const errText = await res.text();
+    console.error("[unipile] hosted auth failed:", res.status, errText);
+    throw new Error(`Unipile hosted auth failed: ${res.status} ${errText}`);
   }
+
   const json = (await res.json()) as { url?: string };
-  if (!json.url) throw new Error("Unipile hosted auth response missing url");
+  if (!json.url) {
+    console.error("[unipile] hosted auth response missing url:", json);
+    throw new Error("Unipile hosted auth response missing url");
+  }
   return { url: json.url };
 }
 

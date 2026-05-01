@@ -41,6 +41,10 @@ export const config = {
     apiKey: optional("UNIPILE_API_KEY"),
     dsn: optional("UNIPILE_DSN"),
     demoMode: bool("UNIPILE_DEMO_MODE", false),
+    // Public base URL of THIS API (so Unipile can reach our webhook). For
+    // Codespaces this is the forwarded port URL; for production it's the
+    // public API origin. The /webhooks/unipile path is appended when used.
+    notifyUrl: optional("UNIPILE_NOTIFY_URL"),
   },
 };
 

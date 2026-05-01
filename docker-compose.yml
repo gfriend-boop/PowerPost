@@ -40,6 +40,7 @@ services:
       UNIPILE_API_KEY: ${UNIPILE_API_KEY:-}
       UNIPILE_DSN: ${UNIPILE_DSN:-}
       UNIPILE_DEMO_MODE: ${UNIPILE_DEMO_MODE:-false}
+      UNIPILE_NOTIFY_URL: ${UNIPILE_NOTIFY_URL:-}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:5173}
     ports:
       - "4000:4000"
