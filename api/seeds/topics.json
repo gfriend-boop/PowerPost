@@ -1,0 +1,18 @@
+[
+  { "topic_key": "leadership", "label": "Leadership", "sort_order": 1 },
+  { "topic_key": "product", "label": "Product", "sort_order": 2 },
+  { "topic_key": "strategy", "label": "Strategy", "sort_order": 3 },
+  { "topic_key": "change_management", "label": "Change Management", "sort_order": 4 },
+  { "topic_key": "dei", "label": "DEI", "sort_order": 5 },
+  { "topic_key": "hiring_talent", "label": "Hiring & Talent", "sort_order": 6 },
+  { "topic_key": "sales", "label": "Sales", "sort_order": 7 },
+  { "topic_key": "marketing", "label": "Marketing", "sort_order": 8 },
+  { "topic_key": "fundraising", "label": "Fundraising", "sort_order": 9 },
+  { "topic_key": "operations", "label": "Operations", "sort_order": 10 },
+  { "topic_key": "customer_experience", "label": "Customer Experience", "sort_order": 11 },
+  { "topic_key": "ai_technology", "label": "AI & Technology", "sort_order": 12 },
+  { "topic_key": "career_growth", "label": "Career Growth", "sort_order": 13 },
+  { "topic_key": "industry_trends", "label": "Industry Trends", "sort_order": 14 },
+  { "topic_key": "founder_journey", "label": "Founder Journey", "sort_order": 15 },
+  { "topic_key": "coaching_development", "label": "Coaching & Development", "sort_order": 16 }
+]

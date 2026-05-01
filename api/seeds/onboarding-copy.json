@@ -1,0 +1,122 @@
+[
+  {
+    "copy_key": "welcome",
+    "step_index": 0,
+    "title": "Let's power up your voice.",
+    "body": "I'm your PowerPost coach. Over the next ten minutes, I'll ask you a handful of questions about how you sound, who you want to reach, and what LinkedIn is actually meant to do for you. No personality quizzes. No generic prompts. Just enough signal for us to write like you, every time.",
+    "hint": "Takes about ten minutes. You can pick up where you left off if you need to step away.",
+    "cta": "Let's begin"
+  },
+  {
+    "copy_key": "role_identity",
+    "step_index": 1,
+    "title": "Tell me who you are.",
+    "body": "In one or two sentences, how would you introduce yourself to someone new in your industry? Not your job title from your resume. The version you'd say out loud at a dinner with people you respect.",
+    "hint": "One or two sentences. Speak the way you actually speak.",
+    "cta": "Continue"
+  },
+  {
+    "copy_key": "snippet_pick_hook",
+    "step_index": 2,
+    "title": "Which of these sounds most like you?",
+    "body": "Read each one out loud if you can. Pick the one that feels closest to how you'd actually open a post. There's no wrong answer. Your gut is doing the work here.",
+    "hint": "Pick one.",
+    "cta": "Continue"
+  },
+  {
+    "copy_key": "topics_authority",
+    "step_index": 3,
+    "title": "What do you want to be known for?",
+    "body": "These are the topics where you've earned the right to have an opinion. Pick anything that's genuinely yours, and add your own if the list doesn't capture it.",
+    "hint": "Pick as many as feel right. You can add your own.",
+    "cta": "Continue"
+  },
+  {
+    "copy_key": "snippet_pick_opening",
+    "step_index": 4,
+    "title": "How do you naturally start a thought?",
+    "body": "Some people open with a stat or a sharp observation. Others open by putting you inside a moment they lived. Both work. The question is which one is more you.",
+    "hint": "Pick one.",
+    "cta": "Continue"
+  },
+  {
+    "copy_key": "content_guardrails",
+    "step_index": 5,
+    "title": "Anything that's a hard no?",
+    "body": "Topics you'd never touch. Buzzwords that make you cringe. Phrases other people use that aren't yours. Tell me now, and I'll keep them out of every draft we ever write together.",
+    "hint": "Optional. Free text. List anything you want me to avoid.",
+    "cta": "Continue"
+  },
+  {
+    "copy_key": "vocabulary_signals",
+    "step_index": 6,
+    "title": "Words you love. Words you hate.",
+    "body": "If there are phrases you reach for naturally, share them. If there are words that make you want to throw your phone, share those too. Up to three of each. This is one of the fastest ways to make drafts sound like you.",
+    "hint": "Optional. Up to three words or phrases for each.",
+    "cta": "Continue"
+  },
+  {
+    "copy_key": "linkedin_goal",
+    "step_index": 7,
+    "title": "What is LinkedIn actually for, for you?",
+    "body": "Be honest. There's no wrong goal here, but the goal we choose shapes every draft. If you want inbound leads, we'll write to attract them. If you want a board seat, we'll write to position you for it.",
+    "hint": "Pick one. You can change this later.",
+    "cta": "Continue"
+  },
+  {
+    "copy_key": "target_audience",
+    "step_index": 8,
+    "title": "Who are you trying to reach?",
+    "body": "In two or three sentences, describe the person you most want reading your posts. Their role, their stage, what they care about. The more specific you are, the sharper every draft will land.",
+    "hint": "Two or three sentences.",
+    "cta": "Continue"
+  },
+  {
+    "copy_key": "snippet_pick_cta",
+    "step_index": 9,
+    "title": "How do you like to close?",
+    "body": "Some people end with a clear ask. Others end with a question that makes you sit with the post for a minute. Pick the one that feels right.",
+    "hint": "Pick one.",
+    "cta": "Continue"
+  },
+  {
+    "copy_key": "posting_cadence",
+    "step_index": 10,
+    "title": "How often do you actually want to post?",
+    "body": "Not how often you think you should. How often you'll genuinely show up. We'd rather you post twice a week and mean it than commit to daily and ghost.",
+    "hint": "Pick one.",
+    "cta": "Continue"
+  },
+  {
+    "copy_key": "never_be_mistaken_for",
+    "step_index": 11,
+    "title": "What's the one thing you never want to be mistaken for?",
+    "body": "On LinkedIn specifically. The thing that, if someone called you it, would make you wince. Salesy. Preachy. Empty motivational. Whatever it is, name it now and I'll write to actively avoid it.",
+    "hint": "One sentence is enough.",
+    "cta": "Lock it in"
+  },
+  {
+    "copy_key": "processing",
+    "step_index": 12,
+    "title": "Dialing in your PowerPost voice.",
+    "body": "Reading your snippets. Weighing your goals. Mapping your archetype. This takes a few seconds.",
+    "hint": null,
+    "cta": null
+  },
+  {
+    "copy_key": "reveal_intro",
+    "step_index": 13,
+    "title": "Meet your voice.",
+    "body": "Based on what you've told me, here's the archetype that fits you best. Read the sample post. If it sounds like something you'd be proud to publish, we're in the right place. If it doesn't, the dials below let you tune it.",
+    "hint": null,
+    "cta": "Tune your voice"
+  },
+  {
+    "copy_key": "customize",
+    "step_index": 14,
+    "title": "Your voice, your way.",
+    "body": "Three sliders. Three signature phrases if you have them. Anything else off limits. Don't overthink this. You can change any of it later from your settings.",
+    "hint": null,
+    "cta": "This is my voice, let's go"
+  }
+]

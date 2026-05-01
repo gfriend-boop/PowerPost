@@ -1,0 +1,59 @@
+:root {
+  /* Color palette — PowerSpeak Academy */
+  --color-navy: #1d2846;
+  --color-royal: #2b3a67;
+  --color-slate: #959ab3;
+  --color-light-grey: #e1e4e7;
+  --color-off-white: #f4f4f4;
+  --color-pink: #ff2ecc;
+  --color-white: #ffffff;
+  --color-black: #0b1024;
+
+  /* Surfaces */
+  --surface-page: var(--color-off-white);
+  --surface-canvas: var(--color-navy);
+  --surface-card: var(--color-royal);
+  --surface-card-soft: rgba(43, 58, 103, 0.08);
+  --surface-input: var(--color-white);
+
+  /* Text */
+  --text-on-dark: var(--color-off-white);
+  --text-on-dark-muted: var(--color-slate);
+  --text-on-light: var(--color-navy);
+  --text-on-light-muted: #5a627d;
+  --text-link: var(--color-pink);
+
+  /* Borders */
+  --border-soft: var(--color-light-grey);
+  --border-strong: rgba(29, 40, 70, 0.16);
+
+  /* Effects */
+  --shadow-card: 0 18px 40px -22px rgba(11, 16, 36, 0.35);
+  --shadow-elevated: 0 32px 80px -28px rgba(11, 16, 36, 0.55);
+  --gradient-onboarding: linear-gradient(180deg, var(--color-navy) 0%, var(--color-royal) 100%);
+
+  /* Type */
+  --font-display: "Grift", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body: "Grift", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-accent: "Grahm Rough", "Source Serif Pro", Georgia, serif;
+
+  /* Sizing */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  --content-width-sm: 560px;
+  --content-width-md: 760px;
+  --content-width-lg: 1080px;
+}

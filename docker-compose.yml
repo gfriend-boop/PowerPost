@@ -1,0 +1,67 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: powerpost-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: powerpost
+      POSTGRES_PASSWORD: powerpost
+      POSTGRES_DB: powerpost
+    ports:
+      - "5433:5432"
+    volumes:
+      - powerpost_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U powerpost -d powerpost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: powerpost-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgres://powerpost:powerpost@db:5432/powerpost
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev-access-secret-change-me}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh-secret-change-me}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL_GENERATION: ${ANTHROPIC_MODEL_GENERATION:-claude-sonnet-4-6}
+      ANTHROPIC_MODEL_PREVIEW: ${ANTHROPIC_MODEL_PREVIEW:-claude-haiku-4-5}
+      UNIPILE_API_KEY: ${UNIPILE_API_KEY:-}
+      UNIPILE_DSN: ${UNIPILE_DSN:-}
+      UNIPILE_DEMO_MODE: ${UNIPILE_DEMO_MODE:-true}
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:5173}
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./api:/app
+      - /app/node_modules
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: powerpost-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:4000}
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+
+volumes:
+  powerpost_db_data:

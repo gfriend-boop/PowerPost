@@ -1,0 +1,65 @@
+[
+  {
+    "snippet_key": "hook_a_direct",
+    "pick_group": "hook_style",
+    "option_label": "A",
+    "style_tag": "direct_pragmatic",
+    "body": "Most people don't have a communication problem. They have a clarity problem. Fix that first, and everything else gets easier.",
+    "signals": ["the_owner", "the_architect"],
+    "sort_order": 1
+  },
+  {
+    "snippet_key": "hook_b_story",
+    "pick_group": "hook_style",
+    "option_label": "B",
+    "style_tag": "warm_story_led",
+    "body": "How many times have you hit 'delete' instead of 'enter' on a message? Too vulnerable. Too much. Too messy. I know, me too. And here's why you should send it anyway.",
+    "signals": ["the_narrator", "the_igniter", "the_revealer"],
+    "sort_order": 2
+  },
+  {
+    "snippet_key": "hook_c_challenger",
+    "pick_group": "hook_style",
+    "option_label": "C",
+    "style_tag": "bold_challenger",
+    "body": "Read the room. Tone it down. Not the right time. Honestly, that's some of the worst well-intentioned advice we all seem to regurgitate ad nauseum.",
+    "signals": ["the_challenger", "the_revealer"],
+    "sort_order": 3
+  },
+  {
+    "snippet_key": "opening_a_data",
+    "pick_group": "opening_style",
+    "option_label": "A",
+    "style_tag": "data_insight_led",
+    "body": "The research is clear: people don't remember what you said. They remember how you made them feel. Which means most of us are optimizing for the wrong thing entirely.",
+    "signals": ["the_owner", "the_architect", "the_challenger"],
+    "sort_order": 1
+  },
+  {
+    "snippet_key": "opening_b_personal",
+    "pick_group": "opening_style",
+    "option_label": "B",
+    "style_tag": "personal_experience_led",
+    "body": "I sat in that boardroom for twenty minutes before I said a word. Not because I didn't have anything to say. Because I was waiting to feel ready. That was the day I realized 'ready' was never coming.",
+    "signals": ["the_narrator", "the_igniter", "the_revealer"],
+    "sort_order": 2
+  },
+  {
+    "snippet_key": "cta_a_direct",
+    "pick_group": "cta_style",
+    "option_label": "A",
+    "style_tag": "direct_cta",
+    "body": "If this resonates, share it with someone who needs to hear it. And if you're ready to stop shrinking your voice, let's talk.",
+    "signals": ["the_owner", "the_architect", "the_challenger"],
+    "sort_order": 1
+  },
+  {
+    "snippet_key": "cta_b_reflective",
+    "pick_group": "cta_style",
+    "option_label": "B",
+    "style_tag": "reflective_question",
+    "body": "So here's what I keep coming back to: what would you say if you knew the right people were actually listening?",
+    "signals": ["the_narrator", "the_igniter", "the_revealer"],
+    "sort_order": 2
+  }
+]

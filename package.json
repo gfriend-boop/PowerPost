@@ -1,0 +1,28 @@
+{
+  "name": "powerpost",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PowerPost by PowerSpeak Academy — Milestone 1 Early Access MVP",
+  "workspaces": [
+    "api",
+    "web"
+  ],
+  "scripts": {
+    "api:dev": "npm run dev --workspace api",
+    "web:dev": "npm run dev --workspace web",
+    "api:build": "npm run build --workspace api",
+    "web:build": "npm run build --workspace web",
+    "db:migrate": "npm run migrate --workspace api",
+    "db:seed": "npm run seed --workspace api",
+    "db:reset": "npm run reset --workspace api",
+    "dev": "concurrently -n api,web -c blue,magenta \"npm:api:dev\" \"npm:web:dev\"",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

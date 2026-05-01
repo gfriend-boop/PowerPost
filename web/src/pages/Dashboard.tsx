@@ -1,0 +1,206 @@
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { api } from "../api/client";
+import { useAuth } from "../auth/context";
+
+type VoiceProfile = {
+  archetype: string;
+  tone_warmth: number;
+  tone_storytelling: number;
+  tone_provocation: number;
+  linkedin_goal: string;
+  posting_cadence: string;
+  topic_authorities: string[];
+  signature_phrases: string[];
+};
+
+type Archetype = {
+  archetype_key: string;
+  display_name: string;
+  description: string;
+};
+
+type WorkshopSession = {
+  workshop_id: string;
+  title: string;
+  status: string;
+  last_message_at: string;
+};
+
+type DraftRow = {
+  content_id: string;
+  draft_content: string;
+  created_at: string;
+  status: string;
+};
+
+export function Dashboard() {
+  const { user, linkedin } = useAuth();
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState<VoiceProfile | null>(null);
+  const [archetype, setArchetype] = useState<Archetype | null>(null);
+  const [sessions, setSessions] = useState<WorkshopSession[]>([]);
+  const [drafts, setDrafts] = useState<DraftRow[]>([]);
+  const [postCount, setPostCount] = useState<number>(0);
+  const [starting, setStarting] = useState(false);
+
+  useEffect(() => {
+    void Promise.all([
+      api.get<{ profile: VoiceProfile | null }>("/voice-profile"),
+      api.get<{ archetype: Archetype }>("/voice-profile/archetype-preview").catch(() => null),
+      api.get<{ sessions: WorkshopSession[] }>("/workshop"),
+      api.get<{ drafts: DraftRow[] }>("/content/drafts"),
+      api.get<{ post_count?: number }>("/linkedin/status"),
+    ]).then(([p, a, s, d, ls]) => {
+      setProfile(p.profile);
+      if (a) setArchetype(a.archetype);
+      setSessions(s.sessions);
+      setDrafts(d.drafts.slice(0, 5));
+      setPostCount(ls?.post_count ?? 0);
+    });
+  }, []);
+
+  const startWorkshop = async () => {
+    setStarting(true);
+    try {
+      const res = await api.post<{ workshop_id: string }>("/workshop/start", {});
+      navigate(`/workshop/${res.workshop_id}`);
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  return (
+    <div style={{ flex: 1, padding: "var(--space-7) var(--space-5)", background: "var(--surface-page)" }}>
+      <div style={{ maxWidth: 1080, margin: "0 auto" }}>
+        <div className="stack-2" style={{ marginBottom: 32 }}>
+          <span
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              color: "var(--text-on-light-muted)",
+            }}
+          >
+            Dashboard
+          </span>
+          <h1 style={{ marginBottom: 0 }}>
+            Welcome back, <span className="accent">{user?.name?.split(" ")[0]}</span>.
+          </h1>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)",
+            gap: 24,
+          }}
+        >
+          <section className="card stack-5">
+            <div>
+              <h2 style={{ marginBottom: 4 }}>Workshop a post</h2>
+              <p className="muted" style={{ margin: 0 }}>
+                Open a back-and-forth chat. Bring an idea or ask me to find one.
+              </p>
+            </div>
+            <button
+              className="btn btn-primary"
+              onClick={startWorkshop}
+              disabled={starting}
+              style={{ alignSelf: "flex-start" }}
+            >
+              {starting ? "Starting..." : "Start a new workshop"}
+            </button>
+            {sessions.length > 0 ? (
+              <div className="stack-2">
+                <span className="field-label">Recent sessions</span>
+                {sessions.slice(0, 4).map((s) => (
+                  <Link
+                    key={s.workshop_id}
+                    to={`/workshop/${s.workshop_id}`}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "12px 16px",
+                      borderRadius: "var(--radius-md)",
+                      background: "var(--surface-card-soft)",
+                      color: "var(--text-on-light)",
+                      textDecoration: "none",
+                    }}
+                  >
+                    <span style={{ fontWeight: 600 }}>{s.title}</span>
+                    <span className="muted" style={{ fontSize: 13 }}>
+                      {new Date(s.last_message_at).toLocaleString()}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+          </section>
+
+          <aside className="stack-4">
+            {archetype ? (
+              <div className="card stack-3">
+                <span className="field-label">Your voice</span>
+                <h3 style={{ margin: 0 }}>{archetype.display_name}</h3>
+                <p className="muted" style={{ margin: 0, fontSize: 14 }}>
+                  {archetype.description}
+                </p>
+                {profile ? (
+                  <div className="muted" style={{ fontSize: 13 }}>
+                    Warmth {profile.tone_warmth}/10 · Storytelling {profile.tone_storytelling}/10 · Provocation {profile.tone_provocation}/10
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="card stack-2">
+              <span className="field-label">LinkedIn</span>
+              {linkedin.connected ? (
+                <>
+                  <div style={{ fontWeight: 600 }}>
+                    Connected{linkedin.is_demo ? " (demo)" : ""}
+                  </div>
+                  <div className="muted" style={{ fontSize: 14 }}>
+                    {postCount} cached post{postCount === 1 ? "" : "s"}
+                  </div>
+                </>
+              ) : (
+                <Link to="/onboarding" className="accent">
+                  Connect now
+                </Link>
+              )}
+            </div>
+          </aside>
+        </div>
+
+        {drafts.length > 0 ? (
+          <section className="card stack-3" style={{ marginTop: 32 }}>
+            <h2 style={{ margin: 0 }}>Recent drafts</h2>
+            {drafts.map((d) => (
+              <div
+                key={d.content_id}
+                style={{
+                  borderTop: "1px solid var(--border-soft)",
+                  paddingTop: 16,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                }}
+              >
+                <span className="muted" style={{ fontSize: 13 }}>
+                  {new Date(d.created_at).toLocaleString()} · {d.status}
+                </span>
+                <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+                  {d.draft_content.length > 280 ? d.draft_content.slice(0, 280) + "..." : d.draft_content}
+                </p>
+              </div>
+            ))}
+          </section>
+        ) : null}
+      </div>
+    </div>
+  );
+}

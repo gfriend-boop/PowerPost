@@ -1,0 +1,189 @@
+@import "./fonts.css";
+@import "./tokens.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--text-on-light);
+  background: var(--surface-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.18;
+  margin: 0 0 var(--space-4);
+}
+
+h1 { font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 800; }
+h2 { font-size: clamp(1.5rem, 2.6vw, 2.2rem); }
+h3 { font-size: 1.4rem; }
+
+p {
+  margin: 0 0 var(--space-4);
+}
+
+a {
+  color: var(--color-pink);
+  text-decoration: none;
+  font-weight: 600;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: 1rem;
+  color: var(--text-on-light);
+}
+
+textarea {
+  resize: vertical;
+}
+
+::selection {
+  background: var(--color-pink);
+  color: var(--color-white);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 14px 22px;
+  border-radius: var(--radius-pill);
+  border: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.2s ease;
+  text-decoration: none;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--color-pink);
+  color: var(--color-white);
+  box-shadow: 0 18px 40px -18px rgba(255, 46, 204, 0.55);
+}
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 22px 50px -18px rgba(255, 46, 204, 0.65);
+}
+.btn-secondary {
+  background: var(--color-navy);
+  color: var(--color-white);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-royal);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text-on-light);
+  border: 1px solid var(--border-strong);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: rgba(29, 40, 70, 0.04);
+}
+.btn-on-dark {
+  background: var(--color-pink);
+  color: var(--color-white);
+}
+
+/* Inputs */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.field-label {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-on-light-muted);
+}
+.field-input,
+.field-textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border-soft);
+  background: var(--color-white);
+  color: var(--text-on-light);
+  font-size: 1rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.field-input:focus,
+.field-textarea:focus {
+  outline: none;
+  border-color: var(--color-pink);
+  box-shadow: 0 0 0 4px rgba(255, 46, 204, 0.15);
+}
+.field-textarea {
+  min-height: 120px;
+  line-height: 1.5;
+}
+.field-error {
+  color: #c81d6a;
+  font-size: 0.85rem;
+}
+
+/* Cards */
+.card {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-6);
+  border: 1px solid var(--border-soft);
+}
+
+/* Layout helpers */
+.stack-2 > * + * { margin-top: var(--space-2); }
+.stack-3 > * + * { margin-top: var(--space-3); }
+.stack-4 > * + * { margin-top: var(--space-4); }
+.stack-5 > * + * { margin-top: var(--space-5); }
+.stack-6 > * + * { margin-top: var(--space-6); }
+.stack-7 > * + * { margin-top: var(--space-7); }
+
+.muted { color: var(--text-on-light-muted); }
+.muted-on-dark { color: var(--text-on-dark-muted); }
+.accent { color: var(--color-pink); font-weight: 700; }
+.accent-strong {
+  color: var(--color-pink);
+  font-size: 1.25rem;
+  font-weight: 700;
+}

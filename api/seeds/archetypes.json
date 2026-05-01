@@ -1,0 +1,68 @@
+[
+  {
+    "archetype_key": "the_owner",
+    "display_name": "The Owner",
+    "description": "You lead with what you know, and you say it plainly. Clarity is your superpower, and your posts make people smarter without making them feel small.",
+    "who_this_is": "The leader who is done with hedging. Direct, pragmatic, and credible. Posts read like advice from someone who has already solved the thing. Ideal for executives and founders who want their LinkedIn presence to reflect command and competence.",
+    "sample_post": "Most people don't have a communication problem. They have a clarity problem. Fix that first and everything else gets easier. Three questions I ask before any high-stakes conversation: What outcome am I actually driving toward? What does the other person need to hear to get there? What am I willing to say that others won't? Clarity isn't a gift. It's a practice.",
+    "default_warmth": 4,
+    "default_storytelling": 3,
+    "default_provocation": 5,
+    "sort_order": 1
+  },
+  {
+    "archetype_key": "the_igniter",
+    "display_name": "The Igniter",
+    "description": "You move people. Your posts don't just inform, they activate. You write from your values and your audience feels it.",
+    "who_this_is": "The leader who rallies teams, builds communities, and leads with conviction. Warm but authoritative. Posts feel like a rallying call. Ideal for executives and emerging leaders whose LinkedIn presence is about inspiring action in others and in themselves.",
+    "sample_post": "The best leader I've ever worked with walked into a crisis and said: I don't know how we fix this. But I know we will. And I know it starts right here in this room. That room changed. Not because of a plan. Because of a belief. The most underrated leadership skill isn't strategy or execution. It's the ability to make people believe something is possible before there is any evidence that it is. What do your people need to believe right now?",
+    "default_warmth": 8,
+    "default_storytelling": 7,
+    "default_provocation": 4,
+    "sort_order": 2
+  },
+  {
+    "archetype_key": "the_narrator",
+    "display_name": "The Narrator",
+    "description": "You make the complex human. Your lived experience is your content, and people see themselves in your stories before they even realize it.",
+    "who_this_is": "The solopreneur or founder who is brilliant at their work but doesn't want to sound like a brand. Story-led, personal, warm. The 'sounds like a real person' archetype. High vulnerability dial. This is the voice that attracts clients without ever feeling like a pitch.",
+    "sample_post": "Three years ago I sent a proposal to a client I really wanted. They came back with: we love your work, we went with someone cheaper. I told myself it was fine. It wasn't fine. I raised my prices the next week. Not out of spite. Because that rejection made me realize I had been undervaluing my work for years and attracting clients who did the same. The right clients don't haggle. They recognize value. If you're constantly justifying your rate, the problem isn't the price.",
+    "default_warmth": 9,
+    "default_storytelling": 9,
+    "default_provocation": 4,
+    "sort_order": 3
+  },
+  {
+    "archetype_key": "the_architect",
+    "display_name": "The Architect",
+    "description": "You think in systems. Where others see chaos, you see structure, and you share it in a way that makes your audience smarter every single time.",
+    "who_this_is": "The strategic operator. Executive or senior leader who leads with frameworks, data, and structured thinking. Posts feel like a masterclass. Not cold, just rigorous. Readers come back because they always leave with something actionable.",
+    "sample_post": "Every team I have seen struggle with prioritization has the same root problem. They are optimizing at the wrong layer. There are three layers of prioritization: strategic (what are we trying to win?), operational (what do we do first?), and tactical (what do I do today?). Most teams fight at layer three while layer one is unresolved. Fix the strategy and the rest mostly sorts itself. The framework I use: answer layer one before touching layer two, every single quarter. Where is your team getting stuck?",
+    "default_warmth": 4,
+    "default_storytelling": 4,
+    "default_provocation": 5,
+    "sort_order": 4
+  },
+  {
+    "archetype_key": "the_challenger",
+    "display_name": "The Challenger",
+    "description": "You say the thing nobody else will. Your posts don't sit on the fence. They push the conversation somewhere more honest, more useful, and more real.",
+    "who_this_is": "The leader with a point of view and the courage to hold it publicly. Not contrarian for sport. Contrarian because they have done the thinking and arrived somewhere different from the consensus. Medium vulnerability, high credibility. Posts generate real debate, not just likes.",
+    "sample_post": "Most 'authentic leadership' content is the least authentic thing on LinkedIn. Real authenticity is not performing vulnerability. It is being willing to say something true that people might not want to hear. Like: your team does not need more vision. They need you to stop changing direction every 90 days. Or: most culture problems are not culture problems. They are accountability problems nobody wants to name. Authentic leadership is not a vibe. It is a practice. And it starts with telling the truth to yourself first.",
+    "default_warmth": 5,
+    "default_storytelling": 5,
+    "default_provocation": 9,
+    "sort_order": 5
+  },
+  {
+    "archetype_key": "the_revealer",
+    "display_name": "The Revealer",
+    "description": "You choose openness as a power move. Radical transparency, intentional vulnerability. Not because you can't help it, but because you know truth is the most powerful thing in the room.",
+    "who_this_is": "The leader who has done the inner work and leads from that place publicly. Posts are raw and honest but never uncontrolled. There is always intention behind the share. This is 'tone down nothing' made into a content strategy. The rarest and most magnetic voice on LinkedIn. Sovereign energy, not chaos.",
+    "sample_post": "I had a panic attack before a keynote last year. Full shutdown. Hands shaking. I went on stage anyway. Not because I am tough. Because I have learned that my nervous system is not a warning to stop. It is a signal that I care deeply about what I am about to do. I stopped trying to calm down before high-stakes moments. I started trying to channel. The difference between fear and excitement is the story you tell yourself about the sensation. That keynote was one of the best I have ever given. Your anxiety might not be the enemy. It might be the fuel.",
+    "default_warmth": 8,
+    "default_storytelling": 8,
+    "default_provocation": 8,
+    "sort_order": 6
+  }
+]

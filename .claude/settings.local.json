@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp \"/c/Users/70091011/OneDrive - Kantar/Documents/PSA/PSA Primary Logo.svg\" \"/c/Users/70091011/OneDrive - Kantar/Documents/PowerPost/web/public/logos/psa-primary.svg\")",
+      "Bash(cp \"/c/Users/70091011/OneDrive - Kantar/Documents/PSA/PSA Sqaure.svg\" \"/c/Users/70091011/OneDrive - Kantar/Documents/PowerPost/web/public/logos/psa-square.svg\")",
+      "Bash(cp \"/c/Users/70091011/OneDrive - Kantar/Documents/PSA/PSA Text Logo.svg\" \"/c/Users/70091011/OneDrive - Kantar/Documents/PowerPost/web/public/logos/psa-text.svg\")",
+      "Bash(cp \"/c/Users/70091011/OneDrive - Kantar/Documents/PSA/Grift-Geometric-Typeface/OpenType-PS\"/Grift-*.otf \"/c/Users/70091011/OneDrive - Kantar/Documents/PowerPost/web/public/fonts/\")",
+      "Bash(cp \"/c/Users/70091011/OneDrive - Kantar/Documents/PSA/GRAHM-Vintage-Sans-Serif/Fonts/Grahm Rough OTF.otf\" \"/c/Users/70091011/OneDrive - Kantar/Documents/PowerPost/web/public/fonts/Grahm-Rough.otf\")"
+    ]
+  }
+}
