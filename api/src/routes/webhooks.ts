@@ -22,8 +22,10 @@ const UnipileWebhookSchema = z.object({
 router.post(
   "/unipile/account-connected",
   asyncHandler(async (req, res) => {
+    console.log("Unipile webhook received:", JSON.stringify(req.body, null, 2));
+    console.log("Unipile webhook received:", req.body);
     const body = UnipileWebhookSchema.parse(req.body);
-    const userId = body.user_id;
+    const userId = body.name;
     if (!userId) {
       res.json({ ok: true, bound: false });
       return;

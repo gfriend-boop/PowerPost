@@ -79,6 +79,7 @@ const DEMO_POSTS: UnipilePost[] = [
 
 export async function startHostedAuth(
   redirectTo: string,
+  userId: string 
 ): Promise<UnipileHostedAuthLink> {
   if (!isUnipileConfigured()) {
     return {
@@ -100,9 +101,20 @@ export async function startHostedAuth(
       success_redirect_url: redirectTo,
       failure_redirect_url: redirectTo,
       expiresOn,
-        notify_url: "https://laughing-spoon-4q77w65j9vvrfjjp5-4000.app.github.dev/webhooks/unipile"
+      notify_url: "https://laughing-spoon-4q77w65j9vvrfjjp5-4000.app.github.dev/webhooks/unipile",
+      name: userId,
     }),
   });
+  console.log("Sending Unipile hosted auth payload:", JSON.stringify(payload, null, 2));
+const res = await fetch(`https://${config.unipile.dsn}/api/v1/hosted/accounts/link`, {
+  method: "POST",
+  headers: {
+    "X-API-KEY": config.unipile.apiKey,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify(payload),
+});
+
   if (!res.ok) {
     throw new Error(`Unipile hosted auth failed: ${res.status} ${await res.text()}`);
   }

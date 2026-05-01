@@ -13,7 +13,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const userId = req.user!.id;
     const redirectTo = `${config.webOrigin}/onboarding/linkedin-connected`;
-    const link = await startHostedAuth(redirectTo);
+    const link = await startHostedAuth(redirectTo, userId);
 
     if (!isUnipileConfigured()) {
       // Demo mode: synthesise a connected account immediately and seed sample posts.
