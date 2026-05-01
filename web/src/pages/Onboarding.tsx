@@ -171,6 +171,7 @@ export function Onboarding() {
                 const res = await api.post<{ hosted_auth_url: string; demo_mode: boolean }>(
                   "/linkedin/connect",
                 );
+                console.log("LinkedIn connect response:", res);
                 if (res.demo_mode) {
                   await refresh();
                   setPhase("questionnaire");

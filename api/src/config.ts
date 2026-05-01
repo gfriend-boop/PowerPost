@@ -40,7 +40,7 @@ export const config = {
   unipile: {
     apiKey: optional("UNIPILE_API_KEY"),
     dsn: optional("UNIPILE_DSN"),
-    demoMode: bool("UNIPILE_DEMO_MODE", true),
+    demoMode: bool("UNIPILE_DEMO_MODE", false),
   },
 };
 

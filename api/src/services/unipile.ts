@@ -86,6 +86,7 @@ export async function startHostedAuth(
       account_id: "demo-account",
     };
   }
+  const expiresOn = new Date(Date.now() + 15 * 60 * 1000).toISOString();
   const res = await fetch(`https://${config.unipile.dsn}/api/v1/hosted/accounts/link`, {
     method: "POST",
     headers: {
@@ -98,6 +99,8 @@ export async function startHostedAuth(
       api_url: `https://${config.unipile.dsn}`,
       success_redirect_url: redirectTo,
       failure_redirect_url: redirectTo,
+      expiresOn,
+        notify_url: "https://laughing-spoon-4q77w65j9vvrfjjp5-4000.app.github.dev/webhooks/unipile"
     }),
   });
   if (!res.ok) {

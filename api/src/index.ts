@@ -10,13 +10,17 @@ import webhookRoutes from "./routes/webhooks.js";
 import workshopRoutes from "./routes/workshop.js";
 
 const app = express();
-
+app.use((req, res, next) => {
+  console.log("REQUEST:", req.method, req.path, "Origin:", req.headers.origin);
+  next();
+});
 app.use(express.json({ limit: "1mb" }));
+console.log("CORS Origin set to:", config.webOrigin);
 app.use(
   cors({
     origin: config.webOrigin,
     credentials: true,
-  }),
+  })
 );
 
 app.get("/health", (_req, res) => {

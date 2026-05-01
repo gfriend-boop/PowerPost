@@ -39,7 +39,7 @@ services:
       ANTHROPIC_MODEL_PREVIEW: ${ANTHROPIC_MODEL_PREVIEW:-claude-haiku-4-5}
       UNIPILE_API_KEY: ${UNIPILE_API_KEY:-}
       UNIPILE_DSN: ${UNIPILE_DSN:-}
-      UNIPILE_DEMO_MODE: ${UNIPILE_DEMO_MODE:-true}
+      UNIPILE_DEMO_MODE: ${UNIPILE_DEMO_MODE:-false}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:5173}
     ports:
       - "4000:4000"
