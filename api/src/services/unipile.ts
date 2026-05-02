@@ -281,34 +281,97 @@ function stripUrnPrefix(value: unknown): string | undefined {
 }
 
 function mapUnipilePost(item: Record<string, unknown>): UnipilePost {
-  const metricsBag =
-    pickRecord(item, ["metrics", "engagement", "stats", "analytics"]) ?? {};
+  // Some Unipile API versions nest metrics under metrics/engagement/stats/
+  // analytics; the LinkedIn payload (May 2026) puts them flat on the item as
+  // *_counter fields. We accept both.
+  const nestedMetrics =
+    pickRecord(item, ["metrics", "engagement", "stats", "analytics"]) ?? null;
+  const flatBag = nestedMetrics ?? item;
 
   return {
     external_id: String(
-      pickFirst(item, ["id", "post_id", "social_id", "provider_id", "share_id"]) ?? "",
+      pickFirst(item, [
+        "social_id",
+        "share_id",
+        "provider_id",
+        "post_id",
+        "id",
+      ]) ?? "",
     ),
     content: String(
       pickFirst(item, ["text", "content", "share_text", "body", "commentary"]) ?? "",
     ),
-    posted_at: String(
-      pickFirst(item, ["posted_at", "published_at", "created_at", "date", "post_date"]) ??
-        new Date().toISOString(),
+    posted_at: normaliseDate(
+      pickFirst(item, [
+        "parsed_datetime",
+        "posted_at",
+        "published_at",
+        "created_at",
+        "date",
+        "post_date",
+      ]),
     ),
     metrics: {
       impressions: Number(
-        pickFirst(metricsBag, ["impressions", "impression_count", "views"]) ?? 0,
+        pickFirst(flatBag, [
+          "impressions_counter",
+          "impressions",
+          "impression_count",
+          "views",
+        ]) ?? 0,
       ),
       likes: Number(
-        pickFirst(metricsBag, ["likes", "like_count", "reactions", "reaction_count"]) ?? 0,
+        pickFirst(flatBag, [
+          "reaction_counter",
+          "reactions_counter",
+          "likes",
+          "like_count",
+          "reactions",
+          "reaction_count",
+        ]) ?? 0,
       ),
-      comments: Number(pickFirst(metricsBag, ["comments", "comment_count"]) ?? 0),
+      comments: Number(
+        pickFirst(flatBag, ["comment_counter", "comments_counter", "comments", "comment_count"]) ?? 0,
+      ),
       shares: Number(
-        pickFirst(metricsBag, ["shares", "share_count", "reposts", "repost_count"]) ?? 0,
+        pickFirst(flatBag, [
+          "repost_counter",
+          "reposts_counter",
+          "shares",
+          "share_count",
+          "reposts",
+          "repost_count",
+        ]) ?? 0,
       ),
-      clicks: Number(pickFirst(metricsBag, ["clicks", "click_count"]) ?? 0),
+      clicks: Number(pickFirst(flatBag, ["clicks", "click_count"]) ?? 0),
     },
   };
+}
+
+/**
+ * Coerce whatever Unipile gives us as a date into a Postgres-parseable
+ * TIMESTAMPTZ string. Handles ISO strings, ISO without timezone, numeric
+ * Unix timestamps (seconds OR milliseconds), and falls back to "now" rather
+ * than failing the whole row.
+ */
+function normaliseDate(value: unknown): string {
+  if (value === undefined || value === null || value === "") {
+    return new Date().toISOString();
+  }
+  if (typeof value === "number") {
+    const ms = value > 1e12 ? value : value * 1000; // seconds vs millis
+    const d = new Date(ms);
+    return Number.isFinite(d.getTime()) ? d.toISOString() : new Date().toISOString();
+  }
+  if (typeof value === "string") {
+    const d = new Date(value);
+    if (Number.isFinite(d.getTime())) return d.toISOString();
+    // Some Unipile values arrive as 'YYYY-MM-DD HH:MM:SS' without TZ; that
+    // parses fine in most JS engines but on the off chance it doesn't, fall
+    // back rather than crashing the row.
+    return new Date().toISOString();
+  }
+  return new Date().toISOString();
 }
 
 function pickFirst(obj: Record<string, unknown>, keys: string[]): unknown {

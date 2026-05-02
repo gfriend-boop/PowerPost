@@ -94,27 +94,46 @@ router.delete(
 export async function syncPostsForUser(userId: string, unipileAccountId: string): Promise<number> {
   const posts = await fetchPostHistory(unipileAccountId);
   await pool.query("DELETE FROM posts WHERE user_id = $1", [userId]);
-  let inserted = 0;
-  for (const post of posts) {
-    await pool.query(
-      `INSERT INTO posts (
-         user_id, linkedin_post_id, content, posted_at,
-         impressions, likes, comments, shares, clicks, post_type
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'short_post')`,
-      [
-        userId,
-        post.external_id,
-        post.content,
-        post.posted_at,
-        post.metrics.impressions,
-        post.metrics.likes,
-        post.metrics.comments,
-        post.metrics.shares,
-        post.metrics.clicks,
-      ],
+  if (posts[0]) {
+    console.log(
+      "[unipile sync] sample mapped post:",
+      JSON.stringify({ ...posts[0], content: posts[0].content.slice(0, 80) + "..." }),
     );
-    inserted++;
   }
+  let inserted = 0;
+  let failed = 0;
+  for (const post of posts) {
+    try {
+      await pool.query(
+        `INSERT INTO posts (
+           user_id, linkedin_post_id, content, posted_at,
+           impressions, likes, comments, shares, clicks, post_type
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'short_post')`,
+        [
+          userId,
+          post.external_id || null,
+          post.content,
+          post.posted_at,
+          post.metrics.impressions,
+          post.metrics.likes,
+          post.metrics.comments,
+          post.metrics.shares,
+          post.metrics.clicks,
+        ],
+      );
+      inserted++;
+    } catch (err) {
+      failed++;
+      // Log just the first few failures to keep the logs tractable.
+      if (failed <= 3) {
+        console.error(
+          `[unipile sync] insert failed for post ${post.external_id}:`,
+          (err as Error).message,
+        );
+      }
+    }
+  }
+  console.log(`[unipile sync] inserted ${inserted}, failed ${failed} of ${posts.length}`);
   await pool.query(
     `UPDATE linkedin_accounts SET last_synced_at = now(), sync_status = 'active' WHERE user_id = $1`,
     [userId],
