@@ -4,16 +4,50 @@ import { api, ApiError } from "../api/client";
 import { CoachBubble, UserBubble } from "../components/ChatBubble";
 import { FeedbackControls } from "../components/Feedback";
 import { InlineScoreBadge, type ScoreShape } from "../components/Score";
+import { ThinkingState } from "../components/Thinking";
 
 type Stance = "clarify" | "draft" | "refine";
 
 type StoredAssistantContent = { message: string; draft: string | null };
+
+type PostGoal =
+  | "just_sound_like_me"
+  | "start_a_conversation"
+  | "get_more_reach"
+  | "attract_leads"
+  | "build_authority"
+  | "share_a_personal_story"
+  | "challenge_a_belief"
+  | "teach_something";
+
+const POST_GOAL_OPTIONS: Array<{ value: PostGoal; label: string; hint: string }> = [
+  { value: "just_sound_like_me", label: "Just sound like me", hint: "Voice fidelity over engagement." },
+  { value: "start_a_conversation", label: "Start a conversation", hint: "Real comments, not vanity likes." },
+  { value: "get_more_reach", label: "Get more reach", hint: "Travel further in the feed." },
+  { value: "attract_leads", label: "Attract leads", hint: "Make the right reader want to talk." },
+  { value: "build_authority", label: "Build authority", hint: "Show a sharp take." },
+  { value: "share_a_personal_story", label: "Share a personal story", hint: "A specific moment from you." },
+  { value: "challenge_a_belief", label: "Challenge a common belief", hint: "Disagree with something popular." },
+  { value: "teach_something", label: "Teach something useful", hint: "One applicable idea." },
+];
+
+const POST_GOAL_LABEL_BY_VALUE = Object.fromEntries(
+  POST_GOAL_OPTIONS.map((o) => [o.value, o.label]),
+) as Record<PostGoal, string>;
 
 type WorkshopMessage = {
   message_id: string;
   role: "user" | "assistant";
   content: string; // raw stored
   metadata: Record<string, unknown>;
+  created_at: string;
+};
+
+type WorkshopSessionInfo = {
+  workshop_id: string;
+  title: string;
+  status: string;
+  post_goal: PostGoal | null;
   created_at: string;
 };
 
@@ -37,6 +71,8 @@ export function Workshop() {
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedDraftIds, setSavedDraftIds] = useState<Record<string, string>>({});
+  const [postGoal, setPostGoal] = useState<PostGoal | null>(null);
+  const [session, setSession] = useState<WorkshopSessionInfo | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -46,9 +82,10 @@ export function Workshop() {
   useEffect(() => {
     if (!workshopId) return;
     void api
-      .get<{ session: unknown; messages: WorkshopMessage[] }>(`/workshop/${workshopId}`)
+      .get<{ session: WorkshopSessionInfo; messages: WorkshopMessage[] }>(`/workshop/${workshopId}`)
       .then((res) => {
         setMessages(res.messages);
+        setSession(res.session);
       })
       .catch(() => {
         setError("Could not load this workshop session.");
@@ -62,12 +99,18 @@ export function Workshop() {
   }, [messages, thinking]);
 
   const startSession = async () => {
+    if (!postGoal) {
+      setError("Pick a goal for the post first.");
+      return;
+    }
     setThinking(true);
     setError(null);
     try {
+      const body: Record<string, string> = { post_goal: postGoal };
+      if (seed.trim()) body.seed = seed.trim();
       const res = await api.post<{ workshop_id: string; reply: WorkshopReply }>(
         "/workshop/start",
-        seed.trim() ? { seed: seed.trim() } : {},
+        body,
       );
       setWorkshopId(res.workshop_id);
       navigate(`/workshop/${res.workshop_id}`);
@@ -149,32 +192,96 @@ export function Workshop() {
             >
               New workshop
             </span>
-            <h2 style={{ marginBottom: 0 }}>Let's build a post.</h2>
+            <h2 style={{ marginBottom: 0 }}>What do you want this post to do?</h2>
           </div>
           <p className="muted" style={{ margin: 0 }}>
-            Drop in an idea, a seed, a half-thought, or just hit start and we will figure it out
-            together. I will ask before I draft if I need to.
+            Pick the goal that matters most. We'll let it shape the draft and the rationale you
+            see afterwards.
           </p>
-          <textarea
-            className="field-textarea"
-            rows={4}
-            placeholder="Optional. The thought you cannot stop having this week."
-            value={seed}
-            onChange={(e) => setSeed(e.target.value)}
-          />
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+              gap: 8,
+            }}
+          >
+            {POST_GOAL_OPTIONS.map((opt) => {
+              const active = postGoal === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setPostGoal(opt.value)}
+                  style={{
+                    textAlign: "left",
+                    padding: "12px 14px",
+                    borderRadius: "var(--radius-md)",
+                    border: active
+                      ? "2px solid var(--color-pink)"
+                      : "1.5px solid var(--border-soft)",
+                    background: active ? "var(--color-navy)" : "var(--color-white)",
+                    color: active ? "var(--color-white)" : "var(--text-on-light)",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    transition: "background 0.15s ease, color 0.15s ease",
+                  }}
+                >
+                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14 }}>
+                    {opt.label}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      marginTop: 2,
+                      color: active
+                        ? "rgba(255,255,255,0.78)"
+                        : "var(--text-on-light-muted)",
+                    }}
+                  >
+                    {opt.hint}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <label className="field">
+            <span className="field-label">Optional context</span>
+            <textarea
+              className="field-textarea"
+              rows={4}
+              placeholder="The thought you can't stop having this week. Or leave blank and we'll find one."
+              value={seed}
+              onChange={(e) => setSeed(e.target.value)}
+            />
+          </label>
+
           {error ? (
             <div className="field-error" role="alert">
               {error}
             </div>
           ) : null}
-          <button
-            className="btn btn-primary"
-            onClick={startSession}
-            disabled={thinking}
-            style={{ alignSelf: "flex-start" }}
-          >
-            {thinking ? "Starting..." : "Start workshop"}
-          </button>
+
+          {thinking ? (
+            <ThinkingState
+              messages={[
+                "Reading your voice profile",
+                "Checking what worked for you",
+                "Picking a stance for the first turn",
+                "Drafting in your style",
+              ]}
+            />
+          ) : (
+            <button
+              className="btn btn-primary"
+              onClick={startSession}
+              disabled={!postGoal}
+              style={{ alignSelf: "flex-start" }}
+            >
+              Start workshop
+            </button>
+          )}
         </div>
       </div>
     );
@@ -182,6 +289,53 @@ export function Workshop() {
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "var(--surface-page)" }}>
+      {session?.post_goal ? (
+        <div
+          style={{
+            background: "var(--color-white)",
+            borderBottom: "1px solid var(--border-soft)",
+            padding: "10px 20px",
+          }}
+        >
+          <div
+            style={{
+              maxWidth: 760,
+              margin: "0 auto",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              fontSize: 13,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: 11,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                color: "var(--text-on-light-muted)",
+                fontWeight: 700,
+              }}
+            >
+              Goal
+            </span>
+            <span
+              style={{
+                padding: "4px 10px",
+                borderRadius: "var(--radius-pill)",
+                background: "var(--color-pink)",
+                color: "var(--color-white)",
+                fontFamily: "var(--font-display)",
+                fontWeight: 700,
+                fontSize: 12,
+                letterSpacing: "0.04em",
+              }}
+            >
+              {POST_GOAL_LABEL_BY_VALUE[session.post_goal]}
+            </span>
+          </div>
+        </div>
+      ) : null}
       <div
         ref={scrollRef}
         style={{
@@ -247,6 +401,28 @@ export function Workshop() {
                       {saved ? "Saved" : "Save this draft"}
                     </button>
                     <button
+                      className="btn btn-primary"
+                      style={{ padding: "10px 16px", fontSize: 14 }}
+                      onClick={() => {
+                        if (!parsed.draft) return;
+                        try {
+                          sessionStorage.setItem(
+                            "pp_improve_handoff",
+                            JSON.stringify({
+                              draft: parsed.draft,
+                              workshop_id: workshopId,
+                              source: "workshop",
+                            }),
+                          );
+                        } catch {
+                          // ignore
+                        }
+                        navigate("/improve");
+                      }}
+                    >
+                      Improve this draft
+                    </button>
+                    <button
                       className="btn btn-ghost"
                       style={{ padding: "10px 16px", fontSize: 14 }}
                       onClick={() => parsed.draft && void navigator.clipboard.writeText(parsed.draft)}
@@ -271,7 +447,16 @@ export function Workshop() {
           })}
           {thinking ? (
             <CoachBubble>
-              <span className="muted">Thinking...</span>
+              <ThinkingState
+                variant="bubble"
+                messages={[
+                  "Reading your voice profile",
+                  "Checking your past post patterns",
+                  "Looking for the voice / performance tension",
+                  "Drafting in your style",
+                  "Tightening the recommendation",
+                ]}
+              />
             </CoachBubble>
           ) : null}
         </div>

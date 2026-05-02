@@ -21,7 +21,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         }}
       >
         <Link to="/" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Logo variant="primary" height={36} />
+          <Logo variant="primary" tone="light" height={36} />
           <span
             style={{
               fontFamily: "var(--font-display)",
@@ -69,7 +69,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           fontSize: 13,
         }}
       >
-        <Logo variant="text" height={18} />
+        <Logo variant="text" tone="light" height={18} />
         <span>PowerPost by PowerSpeak Academy</span>
       </footer>
     </div>

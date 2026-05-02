@@ -51,6 +51,7 @@ import {
 } from "../services/phase2/inspire.js";
 import { scoreDraft } from "../services/phase2/scoring.js";
 import { computeAlignment } from "../services/phase2/alignment.js";
+import { getLinkedInSummary } from "../services/phase2/linkedin-summary.js";
 import { HttpError, asyncHandler } from "../utils/http.js";
 
 const SelectedKpiEnum = z.enum([
@@ -116,6 +117,9 @@ router.post(
 const ImproveStartSchema = z.object({
   draft_content: z.string().min(1).max(10000),
   selected_kpi: SelectedKpiEnum.optional(),
+  target: z.enum(["voice", "performance", "balanced", "just_voice"]).optional(),
+  source_workshop_id: z.string().uuid().optional(),
+  source_content_id: z.string().uuid().optional(),
 });
 
 router.post(
@@ -127,6 +131,9 @@ router.post(
       userId: req.user!.id,
       draft: body.draft_content,
       kpi: body.selected_kpi,
+      target: body.target,
+      sourceWorkshopId: body.source_workshop_id,
+      sourceContentId: body.source_content_id,
     });
     res.status(201).json({ session });
   }),
@@ -356,6 +363,15 @@ router.get(
   asyncHandler(async (req, res) => {
     const result = await computeAlignment(req.user!.id);
     res.json(result);
+  }),
+);
+
+router.get(
+  "/analytics/linkedin-summary",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const summary = await getLinkedInSummary(req.user!.id);
+    res.json(summary);
   }),
 );
 

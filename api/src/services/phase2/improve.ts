@@ -72,6 +72,9 @@ export async function startImprovement(args: {
   userId: string;
   draft: string;
   kpi?: SelectedKpi;
+  target?: "voice" | "performance" | "balanced" | "just_voice";
+  sourceWorkshopId?: string;
+  sourceContentId?: string;
 }): Promise<ImprovementSession> {
   const ctx = await loadPromptContext(args.userId, { kpi: args.kpi });
   if (!ctx) throw new Error("Voice profile required before improving a draft");
@@ -83,12 +86,13 @@ export async function startImprovement(args: {
   });
 
   const system = buildPhase2System(ctx, { kpi: args.kpi });
-  const userPrompt = buildImprovePrompt({
-    draft: args.draft,
-    kpi: args.kpi,
-    voiceScore: score.voice_score,
-    performanceScore: score.performance_score,
-  });
+  const userPrompt =
+    buildImprovePrompt({
+      draft: args.draft,
+      kpi: args.kpi,
+      voiceScore: score.voice_score,
+      performanceScore: score.performance_score,
+    }) + targetHint(args.target);
 
   const llm = getLLMClient();
   const response = await llm.complete({
@@ -121,8 +125,9 @@ export async function startImprovement(args: {
     `INSERT INTO improvement_suggestions (
        user_id, original_draft, selected_kpi,
        voice_score_before, performance_score_before,
-       recommendations, working_draft, tradeoff_summary, status
-     ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, 'open')
+       recommendations, working_draft, tradeoff_summary, status,
+       source_workshop_id, optimization_target, content_id
+     ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, 'open', $9, $10, $11)
      RETURNING suggestion_id`,
     [
       args.userId,
@@ -133,6 +138,9 @@ export async function startImprovement(args: {
       JSON.stringify(paths),
       args.draft,
       parsed?.tradeoff_summary ?? "",
+      args.sourceWorkshopId ?? null,
+      args.target ?? null,
+      args.sourceContentId ?? null,
     ],
   );
 
@@ -315,6 +323,17 @@ export async function optimizeDraft(args: {
           ? "Some draft formatting was auto-cleaned during optimisation."
           : "",
   };
+}
+
+function targetHint(target: string | undefined): string {
+  if (!target) return "";
+  if (target === "voice" || target === "just_voice") {
+    return `\n\nUSER OPTIMIZATION PREFERENCE: ${target === "just_voice" ? "Just sound like me" : "Voice alignment"}. The user explicitly does not want this draft over-optimized for engagement. Lean every recommendation toward fidelity to their natural voice. If a recommendation would only matter for performance, drop it.`;
+  }
+  if (target === "performance") {
+    return "\n\nUSER OPTIMIZATION PREFERENCE: Performance. The user is willing to push the draft harder for the selected KPI. Still preserve their voice. Still call out tradeoffs. Do not suggest clickbait.";
+  }
+  return "\n\nUSER OPTIMIZATION PREFERENCE: Balanced. Improve both voice and performance without letting either dominate.";
 }
 
 function applyRecommendation(draft: string, rec: Recommendation): string {

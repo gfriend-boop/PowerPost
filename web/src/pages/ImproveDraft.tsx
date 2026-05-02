@@ -3,16 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ApiError, api } from "../api/client";
 import { FeedbackControls } from "../components/Feedback";
 import { ScoreCard } from "../components/Score";
-
-const KPI_OPTIONS: Array<{ value: Kpi; label: string }> = [
-  { value: "impressions", label: "Impressions" },
-  { value: "likes", label: "Likes" },
-  { value: "comments", label: "Comments" },
-  { value: "shares", label: "Shares" },
-  { value: "clicks", label: "Clicks" },
-  { value: "inbound_leads", label: "Inbound leads" },
-  { value: "profile_views", label: "Profile views" },
-];
+import { ThinkingState } from "../components/Thinking";
 
 type Kpi =
   | "impressions"
@@ -22,6 +13,62 @@ type Kpi =
   | "clicks"
   | "inbound_leads"
   | "profile_views";
+
+type Target = "voice" | "performance" | "balanced" | "just_voice";
+
+/**
+ * Combined "what do you want this draft to do?" picker. Each option becomes
+ * a (target, kpi) pair on the API call. The first three are voice/performance/
+ * balanced choices; the rest are KPI-specific (which implicitly use a balanced
+ * target so the user gets both paths).
+ */
+type TargetOption =
+  | { value: string; label: string; hint: string; target: Target; kpi?: undefined }
+  | { value: string; label: string; hint: string; target: "balanced"; kpi: Kpi };
+
+const TARGET_OPTIONS: TargetOption[] = [
+  {
+    value: "just_voice",
+    label: "Just sound like me",
+    hint: "Voice fidelity. No engagement push.",
+    target: "just_voice",
+  },
+  {
+    value: "voice",
+    label: "Voice alignment",
+    hint: "Lean toward how you actually write.",
+    target: "voice",
+  },
+  {
+    value: "performance",
+    label: "Performance",
+    hint: "Push the draft harder for reach + response.",
+    target: "performance",
+  },
+  {
+    value: "balanced",
+    label: "Balanced",
+    hint: "Voice and performance, both honest.",
+    target: "balanced",
+  },
+  { value: "kpi:impressions", label: "Impressions", hint: "More eyes.", target: "balanced", kpi: "impressions" },
+  { value: "kpi:comments", label: "Comments", hint: "More conversation.", target: "balanced", kpi: "comments" },
+  { value: "kpi:likes", label: "Reactions / likes", hint: "More resonance signals.", target: "balanced", kpi: "likes" },
+  { value: "kpi:shares", label: "Shares", hint: "More reposts.", target: "balanced", kpi: "shares" },
+  { value: "kpi:clicks", label: "Clicks", hint: "More click-throughs.", target: "balanced", kpi: "clicks" },
+  { value: "kpi:inbound_leads", label: "Inbound leads", hint: "Right-fit prospects DMing you.", target: "balanced", kpi: "inbound_leads" },
+  { value: "kpi:profile_views", label: "Profile views", hint: "More people checking you out.", target: "balanced", kpi: "profile_views" },
+];
+
+const KPI_LABEL: Record<Kpi, string> = {
+  impressions: "Impressions",
+  likes: "Reactions / likes",
+  comments: "Comments",
+  shares: "Shares",
+  clicks: "Clicks",
+  inbound_leads: "Inbound leads",
+  profile_views: "Profile views",
+};
 
 type Recommendation = {
   recommendation_id: string;
@@ -68,11 +115,18 @@ export function ImproveDraft() {
   const navigate = useNavigate();
 
   const [draft, setDraft] = useState("");
-  const [kpi, setKpi] = useState<Kpi>("comments");
+  const [targetValue, setTargetValue] = useState<string>("balanced");
   const [analyzing, setAnalyzing] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [optimizing, setOptimizing] = useState<string | null>(null);
+  const [handoffSource, setHandoffSource] = useState<{ workshop_id: string | null } | null>(null);
+
+  const targetOption = useMemo<TargetOption>(
+    () => TARGET_OPTIONS.find((t) => t.value === targetValue) ?? TARGET_OPTIONS[3]!,
+    [targetValue],
+  );
+  const kpi: Kpi | undefined = targetOption.kpi;
   const [optimizeResult, setOptimizeResult] = useState<OptimizeResult | null>(null);
   const [finalizing, setFinalizing] = useState(false);
 
@@ -83,9 +137,26 @@ export function ImproveDraft() {
         .then((r) => {
           setSession(r.session);
           setDraft(r.session.original_draft);
-          if (r.session.selected_kpi) setKpi(r.session.selected_kpi);
+          if (r.session.selected_kpi) {
+            setTargetValue(`kpi:${r.session.selected_kpi}`);
+          }
         })
         .catch(() => setError("Could not load improvement session"));
+      return;
+    }
+    // No ID in route — check for a Workshop handoff in sessionStorage.
+    try {
+      const raw = sessionStorage.getItem("pp_improve_handoff");
+      if (raw) {
+        const parsed = JSON.parse(raw) as { draft?: string; workshop_id?: string };
+        if (parsed.draft) {
+          setDraft(parsed.draft);
+          setHandoffSource({ workshop_id: parsed.workshop_id ?? null });
+        }
+        sessionStorage.removeItem("pp_improve_handoff");
+      }
+    } catch {
+      // ignore
     }
   }, [params.id]);
 
@@ -106,10 +177,13 @@ export function ImproveDraft() {
     setError(null);
     setOptimizeResult(null);
     try {
-      const res = await api.post<{ session: Session }>("/content/improve", {
+      const body: Record<string, unknown> = {
         draft_content: draft,
-        selected_kpi: kpi,
-      });
+        target: targetOption.target,
+      };
+      if (kpi) body.selected_kpi = kpi;
+      if (handoffSource?.workshop_id) body.source_workshop_id = handoffSource.workshop_id;
+      const res = await api.post<{ session: Session }>("/content/improve", body);
       setSession(res.session);
       navigate(`/improve/${res.session.suggestion_id}`, { replace: true });
     } catch (err) {
@@ -245,10 +319,40 @@ export function ImproveDraft() {
         <h1 style={{ marginBottom: 4 }}>
           Sharpen <span className="accent">a draft you already have</span>.
         </h1>
-        <p className="muted" style={{ marginBottom: 24 }}>
+        <p className="muted" style={{ marginBottom: 16 }}>
           Paste a draft. Pick what you actually want it to do. Get voice-aligned and
           performance-aligned recommendations grounded in your own posts.
         </p>
+
+        {handoffSource && !session ? (
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "8px 14px",
+              borderRadius: "var(--radius-pill)",
+              background: "var(--color-navy)",
+              color: "var(--color-white)",
+              fontFamily: "var(--font-display)",
+              fontWeight: 700,
+              fontSize: 12,
+              letterSpacing: "0.04em",
+              marginBottom: 16,
+            }}
+          >
+            <span style={{ color: "var(--color-pink)" }}>FROM</span>
+            <span>Workshop draft</span>
+            {handoffSource.workshop_id ? (
+              <Link
+                to={`/workshop/${handoffSource.workshop_id}`}
+                style={{ color: "var(--color-white)", fontWeight: 600 }}
+              >
+                Back to session →
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
 
         {error ? (
           <div
@@ -280,45 +384,76 @@ export function ImproveDraft() {
           </label>
 
           <label className="field">
-            <span className="field-label">Optimize for</span>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {KPI_OPTIONS.map((opt) => {
-                const active = kpi === opt.value;
+            <span className="field-label">What do you want this to do?</span>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: 8,
+              }}
+            >
+              {TARGET_OPTIONS.map((opt) => {
+                const active = targetValue === opt.value;
                 return (
                   <button
                     key={opt.value}
                     type="button"
-                    onClick={() => setKpi(opt.value)}
+                    onClick={() => setTargetValue(opt.value)}
+                    disabled={Boolean(session)}
                     style={{
-                      padding: "8px 14px",
-                      borderRadius: "var(--radius-pill)",
+                      textAlign: "left",
+                      padding: "10px 14px",
+                      borderRadius: "var(--radius-md)",
                       border: active
                         ? "2px solid var(--color-pink)"
                         : "1.5px solid var(--border-soft)",
                       background: active ? "var(--color-navy)" : "var(--color-white)",
                       color: active ? "var(--color-white)" : "var(--text-on-light)",
-                      fontFamily: "var(--font-display)",
-                      fontWeight: 600,
-                      fontSize: 13,
-                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      cursor: session ? "not-allowed" : "pointer",
                       transition: "background 0.15s ease, color 0.15s ease",
+                      opacity: session ? 0.7 : 1,
                     }}
                   >
-                    {opt.label}
+                    <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13 }}>
+                      {opt.label}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 11.5,
+                        marginTop: 2,
+                        color: active
+                          ? "rgba(255,255,255,0.78)"
+                          : "var(--text-on-light-muted)",
+                      }}
+                    >
+                      {opt.hint}
+                    </div>
                   </button>
                 );
               })}
             </div>
           </label>
 
-          <button
-            className="btn btn-primary"
-            disabled={!draft.trim() || analyzing || Boolean(session)}
-            onClick={analyze}
-            style={{ alignSelf: "flex-start" }}
-          >
-            {analyzing ? "Analysing..." : session ? "Analysis ready below" : "Analyze"}
-          </button>
+          {analyzing ? (
+            <ThinkingState
+              messages={[
+                "Reading your voice profile",
+                "Pulling your strongest past posts",
+                "Looking for the voice / performance tension",
+                "Tightening the recommendations",
+              ]}
+            />
+          ) : (
+            <button
+              className="btn btn-primary"
+              disabled={!draft.trim() || Boolean(session)}
+              onClick={analyze}
+              style={{ alignSelf: "flex-start" }}
+            >
+              {session ? "Analysis ready below" : "Analyze"}
+            </button>
+          )}
         </section>
 
         {session && score ? (
@@ -413,23 +548,35 @@ export function ImproveDraft() {
                     onClick={() => optimize("voice")}
                     disabled={Boolean(optimizing)}
                   >
-                    {optimizing === "voice" ? "Optimising..." : "Optimise for voice"}
+                    Optimise for voice
                   </button>
                   <button
                     className="btn btn-ghost"
                     onClick={() => optimize("performance")}
                     disabled={Boolean(optimizing)}
                   >
-                    {optimizing === "performance" ? "Optimising..." : "Optimise for performance"}
+                    Optimise for performance
                   </button>
                   <button
                     className="btn btn-ghost"
                     onClick={() => optimize("balanced")}
                     disabled={Boolean(optimizing)}
                   >
-                    {optimizing === "balanced" ? "Optimising..." : "Balance both"}
+                    Balance both
                   </button>
                 </div>
+                {optimizing ? (
+                  <div style={{ marginTop: 8 }}>
+                    <ThinkingState
+                      variant="inline"
+                      messages={[
+                        `Rewriting for ${optimizing}`,
+                        "Holding your voice steady",
+                        "Tightening the structure",
+                      ]}
+                    />
+                  </div>
+                ) : null}
                 {optimizeResult ? (
                   <div
                     style={{

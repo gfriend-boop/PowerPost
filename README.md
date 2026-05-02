@@ -11,10 +11,14 @@ PowerPost by PowerSpeak Academy. A LinkedIn voice tool for executives, founders,
 
 **Phase 2 adds:**
 - **Get Inspired** — personalised idea feed sourced from the user's actual top posts + adjacent themes + voice gaps. Each idea has a "why this" rationale and launches Workshop with a seeded prompt
-- **Improve My Draft** — paste a draft, pick a KPI, get voice-aligned and performance-aligned recommendation paths with explicit tradeoff calls. Accept/reject individually or per path, then optimise (voice, performance, balanced) and finalise
+- **Improve My Draft** — paste a draft (or hand off from Workshop with one click), pick what you want it to do (Just sound like me / Voice / Balanced / Performance / any KPI), get voice-aligned and performance-aligned recommendation paths with explicit tradeoff calls. Accept/reject individually or per path, then optimise (voice, performance, balanced) and finalise
 - **Voice + Performance Scoring** — every Workshop draft and every Improve session gets dual 1–10 scores with rationales, evidence post references, and confidence
 - **Feedback capture + Learned preferences** — explicit (thumbs / notes) and implicit (accepted/rejected suggestions, finalisations, optimisations) feedback flows into a learned-preferences extractor that proposes user-confirmable patterns. Confirmed preferences inject into every future LLM prompt
 - **Alignment Widget** on the dashboard — voice and performance trends, drift detection, and a single recommended action grounded in the user's recent scores
+- **Workshop post goal** — every new Workshop session asks "What do you want this post to do?" up front (8 options including "Just sound like me"). The goal is stored on the session and shaped into the LLM's system prompt so the draft and rationale honour it
+- **LinkedIn insights widget** — the dashboard now shows posts analysed, top posts by impressions/comments/reactions, 30-day and 6-month totals, and a "What PowerPost noticed" coaching line generated from the user's actual post history (cached for 24h on the linkedin_accounts row)
+- **Calm thinking states** — every LLM-bound action (Workshop turn, Improve analyze, Optimize, Inspire refresh, Score) uses the shared `ThinkingState` component with rotating coach-voice status messages instead of a generic spinner
+- **Light logos on dark surfaces** — header, footer, onboarding splash, and the Workshop coach avatar all use the light-on-dark logo variants
 
 Stack: React + Vite (web) · Node.js + Express (api) · Postgres 16 · Anthropic Claude (LLM) · Unipile (LinkedIn).
 
@@ -185,6 +189,8 @@ When the second-place archetype is within 15% of the leader, it is surfaced on t
 ## Phase 2 API surface
 
 ```
+GET    /analytics/linkedin-summary
+
 POST   /content/score
 POST   /content/optimize
 
@@ -291,6 +297,22 @@ Pre-req: a logged-in user with a completed onboarding voice profile and (ideally
 - After scoring 2+ drafts (any combination of Workshop drafts and Improve sessions), reload the dashboard
 - Confirm the right-rail widget shows voice and performance averages, a sparkline if you have multi-day data, and one recommended action sentence
 
+**6. LinkedIn insights widget**
+- After connecting LinkedIn (or via demo mode) and syncing posts, reload the dashboard
+- Confirm the right-rail widget shows posts analyzed, totals, 30-day and 6-month windows, top posts by impressions / comments / reactions, and a "What PowerPost noticed" line in PowerSpeak voice
+- Sparse history (<3 posts) shows the "Not enough post history yet..." empty state instead of an LLM-generated insight
+
+**7. Workshop goal picker + Improve handoff**
+- Visit `/workshop`. Confirm the start screen now asks "What do you want this post to do?" with eight options
+- Pick "Just sound like me", optionally add a seed, click Start. Confirm the goal chip appears at the top of the active session
+- Wait through the ThinkingState — it should rotate through "Reading your voice profile" / "Checking what worked for you" / etc
+- On any draft, click **Improve this draft**. Confirm `/improve` opens with the textarea prefilled and a "FROM Workshop draft" chip visible
+- Pick a target from the new combined list (e.g. "Just sound like me" or "Comments") and click Analyze. Confirm the chip's Back link returns you to the originating session
+
+**8. Light logos**
+- Confirm the header and footer logos are the light versions on the navy bar
+- The onboarding splash background and the coach avatar in Workshop should also use the light variant
+
 **Backend smoke test** (without UI):
 ```bash
 # Score a draft for the logged-in user (token in $TOKEN)
@@ -303,6 +325,9 @@ curl http://localhost:4000/feedback/preferences -H "Authorization: Bearer $TOKEN
 
 # Refresh inspiration
 curl -X POST http://localhost:4000/content/inspiration/refresh -H "Authorization: Bearer $TOKEN" | jq
+
+# LinkedIn dashboard summary
+curl http://localhost:4000/analytics/linkedin-summary -H "Authorization: Bearer $TOKEN" | jq
 ```
 
 ## Resolved questions

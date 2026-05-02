@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ApiError, api } from "../api/client";
+import { ThinkingState } from "../components/Thinking";
 
 type Idea = {
   idea_id: string;
@@ -132,9 +133,18 @@ export function GetInspired() {
 
         {error ? <ErrorBanner message={error} /> : null}
 
-        {loading ? (
-          <p className="muted">Pulling your history and writing fresh ideas...</p>
-        ) : ideas.length === 0 ? (
+        {loading || refreshing ? (
+          <ThinkingState
+            messages={[
+              "Pulling your top performing posts",
+              "Looking for adjacent angles",
+              "Spotting voice gaps",
+              "Drafting ideas worth your time",
+            ]}
+          />
+        ) : null}
+
+        {loading ? null : ideas.length === 0 ? (
           <p className="muted">No active ideas. Hit refresh to generate a fresh set.</p>
         ) : (
           <div className="stack-3">

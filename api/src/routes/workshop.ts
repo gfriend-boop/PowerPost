@@ -16,8 +16,20 @@ import { HttpError, asyncHandler } from "../utils/http.js";
 
 const router = Router();
 
+const POST_GOAL_VALUES = [
+  "just_sound_like_me",
+  "start_a_conversation",
+  "get_more_reach",
+  "attract_leads",
+  "build_authority",
+  "share_a_personal_story",
+  "challenge_a_belief",
+  "teach_something",
+] as const;
+
 const StartSchema = z.object({
   seed: z.string().max(2000).optional(),
+  post_goal: z.enum(POST_GOAL_VALUES).optional(),
 });
 
 const MessageSchema = z.object({
@@ -65,10 +77,14 @@ router.post(
     }
 
     const result = await pool.query<{ workshop_id: string }>(
-      `INSERT INTO workshop_sessions (user_id, title, status)
-       VALUES ($1, $2, 'active')
+      `INSERT INTO workshop_sessions (user_id, title, status, post_goal)
+       VALUES ($1, $2, 'active', $3)
        RETURNING workshop_id`,
-      [userId, body.seed ? truncate(body.seed, 60) : "Untitled workshop"],
+      [
+        userId,
+        body.seed ? truncate(body.seed, 60) : "Untitled workshop",
+        body.post_goal ?? null,
+      ],
     );
     const workshopId = result.rows[0]!.workshop_id;
 
@@ -204,9 +220,16 @@ async function runWorkshopTurn(userId: string, workshopId: string): Promise<Work
 
   const { topPosts, recentPosts, hasHistory } = await loadVoiceContextPosts(userId);
 
+  const sessionRow = await pool.query<{ post_goal: string | null }>(
+    `SELECT post_goal FROM workshop_sessions WHERE workshop_id = $1`,
+    [workshopId],
+  );
+  const postGoal = sessionRow.rows[0]?.post_goal ?? null;
+
   const baseSystem = buildSystemPrompt(profile);
   const historyContext = buildHistoryContext(topPosts, recentPosts);
-  const fullSystem = `${baseSystem}\n\n${historyContext}\n\n${WORKSHOP_SYSTEM_INSTRUCTION}`;
+  const goalContext = postGoalContext(postGoal);
+  const fullSystem = `${baseSystem}\n\n${historyContext}\n\n${goalContext}${WORKSHOP_SYSTEM_INSTRUCTION}`;
 
   const history = await pool.query<StoredMessage>(
     `SELECT role, content FROM workshop_messages WHERE workshop_id = $1 ORDER BY created_at ASC`,
@@ -279,6 +302,33 @@ async function runWorkshopTurn(userId: string, workshopId: string): Promise<Work
     history_used: hasHistory,
     score,
   };
+}
+
+function postGoalContext(goal: string | null): string {
+  if (!goal) return "";
+  const goalLine = (() => {
+    switch (goal) {
+      case "just_sound_like_me":
+        return "USER POST GOAL: Just sound like me. The user has explicitly chosen voice fidelity over performance. Do NOT optimize for engagement. Do NOT add growth-y framing, hooks, or CTAs unless they would have been there in the user's natural voice. Prioritise sounding like a continuation of their best prior posts. If you would normally make a performance suggestion, hold it.";
+      case "start_a_conversation":
+        return "USER POST GOAL: Start a conversation. The user wants meaningful comments, not vanity engagement. Lean toward reflective endings, real questions tied to reader identity, and openings that put the reader inside a moment. Avoid generic 'what do you think?' closers.";
+      case "get_more_reach":
+        return "USER POST GOAL: Get more reach. The user wants this post to travel. Lean toward strong openings, clear universal hooks, and ideas the user's network would re-share. Do not sacrifice voice for clickbait.";
+      case "attract_leads":
+        return "USER POST GOAL: Attract inbound leads. Lean toward demonstrating expertise without selling. The post should make a target reader think 'I want this person on my team / advising me'. No direct CTAs unless that fits the user's voice.";
+      case "build_authority":
+        return "USER POST GOAL: Build authority. Lean toward perspective, frameworks, and a genuinely sharp take. Authority comes from saying something most people in the user's lane wouldn't, not from listing credentials.";
+      case "share_a_personal_story":
+        return "USER POST GOAL: Share a personal story. The post should center on a specific moment from the user's experience, not a general thesis. Specificity over universality. Avoid the lesson-up-front structure.";
+      case "challenge_a_belief":
+        return "USER POST GOAL: Challenge a common belief. The post should name a widely accepted idea and argue against it with substance. The user has earned the right to disagree. Do not soften the challenge for likeability.";
+      case "teach_something":
+        return "USER POST GOAL: Teach something useful. The post should leave the reader with something they can apply this week. Concrete over abstract. The lesson should be the spine of the post.";
+      default:
+        return "";
+    }
+  })();
+  return goalLine ? `${goalLine}\n\n` : "";
 }
 
 function parseWorkshopReply(raw: string): {

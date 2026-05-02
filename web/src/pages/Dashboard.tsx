@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../auth/context";
 import { AlignmentWidget } from "../components/AlignmentWidget";
+import { LinkedInInsights } from "../components/LinkedInInsights";
 
 type VoiceProfile = {
   archetype: string;
@@ -36,13 +37,12 @@ type DraftRow = {
 };
 
 export function Dashboard() {
-  const { user, linkedin } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<VoiceProfile | null>(null);
   const [archetype, setArchetype] = useState<Archetype | null>(null);
   const [sessions, setSessions] = useState<WorkshopSession[]>([]);
   const [drafts, setDrafts] = useState<DraftRow[]>([]);
-  const [postCount, setPostCount] = useState<number>(0);
   const [starting, setStarting] = useState(false);
 
   useEffect(() => {
@@ -51,13 +51,11 @@ export function Dashboard() {
       api.get<{ archetype: Archetype }>("/voice-profile/archetype-preview").catch(() => null),
       api.get<{ sessions: WorkshopSession[] }>("/workshop"),
       api.get<{ drafts: DraftRow[] }>("/content/drafts"),
-      api.get<{ post_count?: number }>("/linkedin/status"),
-    ]).then(([p, a, s, d, ls]) => {
+    ]).then(([p, a, s, d]) => {
       setProfile(p.profile);
       if (a) setArchetype(a.archetype);
       setSessions(s.sessions);
       setDrafts(d.drafts.slice(0, 5));
-      setPostCount(ls?.post_count ?? 0);
     });
   }, []);
 
@@ -267,23 +265,7 @@ export function Dashboard() {
                 </span>
               </Link>
             ) : null}
-            <div className="card stack-2">
-              <span className="field-label">LinkedIn</span>
-              {linkedin.connected ? (
-                <>
-                  <div style={{ fontWeight: 600 }}>
-                    Connected{linkedin.is_demo ? " (demo)" : ""}
-                  </div>
-                  <div className="muted" style={{ fontSize: 14 }}>
-                    {postCount} cached post{postCount === 1 ? "" : "s"}
-                  </div>
-                </>
-              ) : (
-                <Link to="/onboarding" className="accent">
-                  Connect now
-                </Link>
-              )}
-            </div>
+            <LinkedInInsights />
           </aside>
         </div>
 

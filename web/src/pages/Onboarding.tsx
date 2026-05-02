@@ -1043,7 +1043,7 @@ function PageBg({ children }: { children: React.ReactNode }) {
     >
       <div style={{ width: "100%", maxWidth: 760, display: "flex", flexDirection: "column" }}>
         <div style={{ alignSelf: "flex-start", marginBottom: 32 }}>
-          <Logo variant="primary" height={32} />
+          <Logo variant="primary" tone="light" height={32} />
         </div>
         {children}
       </div>
