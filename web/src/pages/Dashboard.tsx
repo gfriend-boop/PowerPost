@@ -206,7 +206,6 @@ export function Dashboard() {
           </div>
 
           <aside className="stack-4">
-            <AlignmentWidget />
             {archetype ? (
               <Link
                 to="/voice/edit"
@@ -255,8 +254,12 @@ export function Dashboard() {
                 </span>
               </Link>
             ) : null}
-            <LinkedInInsights />
+            <AlignmentWidget />
           </aside>
+        </div>
+
+        <div style={{ marginTop: 24 }}>
+          <LinkedInInsights />
         </div>
       </div>
     </div>
