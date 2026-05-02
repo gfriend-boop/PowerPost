@@ -359,10 +359,15 @@ ${args.draft}
 """`;
 }
 
+export type IdeaSource = "all" | "proven" | "adjacent" | "timely" | "stretch";
+
 export function buildInspirePrompt(args: {
   count: number;
   dismissed: string[];
   saved: string[];
+  ideaSource: IdeaSource;
+  watchedTopics: Array<{ label: string; priority: "normal" | "high" }>;
+  topicAuthorities: string[];
 }): string {
   const dismissedNote =
     args.dismissed.length > 0
@@ -373,14 +378,57 @@ export function buildInspirePrompt(args: {
       ? `The user already saved these ideas, do not repeat them: ${args.saved.join(" | ")}.`
       : "";
 
+  const watchedBlock =
+    args.watchedTopics.length > 0
+      ? `ACTIVE TOPICS TO WATCH (these are conversations the user explicitly told PowerPost to track):\n${args.watchedTopics
+          .map(
+            (t) => `- ${t.priority === "high" ? "[HIGH PRIORITY] " : ""}${t.label}`,
+          )
+          .join("\n")}`
+      : "ACTIVE TOPICS TO WATCH: (none)";
+
+  const authoritiesLine =
+    args.topicAuthorities.length > 0
+      ? `Topic authorities the user claimed in onboarding: ${args.topicAuthorities.join(", ")}.`
+      : "";
+
+  // Build the "what mix of source types to produce" instruction based on the
+  // user's idea_source filter. Source types we emit map to UI badges:
+  //   performance_pattern → Proven Theme
+  //   adjacent_theme      → Adjacent Angle
+  //   timely              → Timely
+  //   voice_gap           → Voice Stretch
+  //   manual_seed         → Seeded
+  const sourceMix = (() => {
+    switch (args.ideaSource) {
+      case "proven":
+        return "ALL ideas should have source_type 'performance_pattern'. Build directly on themes/angles the user has already proven work for them.";
+      case "adjacent":
+        return "ALL ideas should have source_type 'adjacent_theme'. Take what has worked for the user and stretch into a new angle, audience pain point, story, or strategic tension.";
+      case "timely":
+        return `ALL ideas should have source_type 'timely'. Each timely idea MUST connect to at least one of: an active Topic to Watch above, the user's topic authorities, a high-performing prior post, the user's stated LinkedIn goal, OR a credible voice-stretch opportunity. NEVER suggest a timely idea simply because something is trending. Every timely idea MUST include a non-empty timeliness_rationale field that names the specific connection (which watched topic, which prior post, or which goal). If you cannot find a defensible connection for any timely idea, return fewer ideas rather than padding with weak ones.`;
+      case "stretch":
+        return "ALL ideas should have source_type 'voice_gap'. Suggest ideas that intentionally expand the user's voice or content range while still staying credible and on-brand. Reference their voice profile.";
+      case "all":
+      default:
+        return `Mix source types across the ideas. Include some performance_pattern (builds on what worked), some adjacent_theme (related but fresh angle), and some voice_gap (under-represented in their history). Include 'timely' ONLY when active Topics to Watch exist AND you can ground a specific connection. NEVER suggest a timely idea just because something is trending.`;
+    }
+  })();
+
   return `Generate ${args.count} LinkedIn post ideas for this user.
 
-The ideas must include a mix of source types:
-- performance_pattern: builds on a topic or angle that already worked for them.
-- adjacent_theme: a fresh angle related to what worked but in a new direction (e.g. apply their leadership-vulnerability voice to founder pricing).
-- voice_gap: addresses something their voice profile says they care about but their post history under-represents.
+${sourceMix}
 
-Each idea must explain WHY it is being suggested. Use the user's actual post history when available (cite post_ids in evidence_post_ids). No generic content-calendar fillers.
+Each idea must explain WHY it is being suggested. Use the user's actual post history when available (cite post_ids in evidence_post_ids). No generic content-calendar fillers. No clickbait. No em dashes. No broetry.
+
+${watchedBlock}
+
+${authoritiesLine}
+
+CRITICAL RULES:
+- For source_type 'timely': timeliness_rationale is REQUIRED and must name the specific user-relevant hook (a watched topic, a prior post, a voice trait, or a goal).
+- For all other source types: timeliness_rationale should be an empty string.
+- watched_topic_ids should list the LABELS of any watched topics the idea connects to (use the labels exactly as written above), or an empty array.
 
 ${dismissedNote}
 ${savedNote}
@@ -393,7 +441,9 @@ Return JSON ONLY, matching exactly this schema:
       "title": "<short, specific>",
       "suggested_angle": "<2-3 sentences describing the angle>",
       "why_this": "<2-3 sentences, references user voice or evidence>",
-      "source_type": "performance_pattern" | "adjacent_theme" | "voice_gap" | "trend" | "manual_seed",
+      "source_type": "performance_pattern" | "adjacent_theme" | "voice_gap" | "timely" | "manual_seed",
+      "watched_topic_ids": ["<watched topic label>", ...],
+      "timeliness_rationale": "<required when source_type is 'timely', empty string otherwise>",
       "evidence_post_ids": [<post_id strings or empty>],
       "workshop_seed_prompt": "<one short sentence the user can drop into Workshop>"
     }

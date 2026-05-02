@@ -148,6 +148,43 @@ router.get(
   }),
 );
 
+const PatchSessionSchema = z.object({
+  post_goal: z.enum(POST_GOAL_VALUES).nullable().optional(),
+  title: z.string().min(1).max(120).optional(),
+});
+
+router.patch(
+  "/:workshopId",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const workshopId = req.params.workshopId!;
+    const userId = req.user!.id;
+    await assertWorkshopOwnership(workshopId, userId);
+    const body = PatchSessionSchema.parse(req.body);
+
+    const sets: string[] = [];
+    const values: unknown[] = [workshopId, userId];
+    if ("post_goal" in body) {
+      values.push(body.post_goal ?? null);
+      sets.push(`post_goal = $${values.length}`);
+    }
+    if (body.title) {
+      values.push(body.title);
+      sets.push(`title = $${values.length}`);
+    }
+    if (sets.length === 0) {
+      throw new HttpError(400, "Nothing to update");
+    }
+    const { rows } = await pool.query(
+      `UPDATE workshop_sessions SET ${sets.join(", ")}
+        WHERE workshop_id = $1 AND user_id = $2
+        RETURNING *`,
+      values,
+    );
+    res.json({ session: rows[0] });
+  }),
+);
+
 router.get(
   "/",
   requireAuth,
@@ -214,7 +251,7 @@ type WorkshopReply = {
   } | null;
 };
 
-async function runWorkshopTurn(userId: string, workshopId: string): Promise<WorkshopReply> {
+export async function runWorkshopTurn(userId: string, workshopId: string): Promise<WorkshopReply> {
   const profile = await loadVoiceProfileForPrompt(userId);
   if (!profile) throw new HttpError(409, "No voice profile found");
 

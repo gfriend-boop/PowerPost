@@ -306,52 +306,17 @@ export function Workshop() {
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "var(--surface-page)" }}>
-      {session?.post_goal ? (
-        <div
-          style={{
-            background: "var(--color-white)",
-            borderBottom: "1px solid var(--border-soft)",
-            padding: "10px 20px",
+      {session ? (
+        <SessionGoalBar
+          session={session}
+          onChange={async (goal) => {
+            const res = await api.patch<{ session: WorkshopSessionInfo }>(
+              `/workshop/${session.workshop_id}`,
+              { post_goal: goal },
+            );
+            setSession(res.session);
           }}
-        >
-          <div
-            style={{
-              maxWidth: 760,
-              margin: "0 auto",
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              fontSize: 13,
-            }}
-          >
-            <span
-              style={{
-                fontFamily: "var(--font-display)",
-                fontSize: 11,
-                letterSpacing: "0.16em",
-                textTransform: "uppercase",
-                color: "var(--text-on-light-muted)",
-                fontWeight: 700,
-              }}
-            >
-              Goal
-            </span>
-            <span
-              style={{
-                padding: "4px 10px",
-                borderRadius: "var(--radius-pill)",
-                background: "var(--color-pink)",
-                color: "var(--color-white)",
-                fontFamily: "var(--font-display)",
-                fontWeight: 700,
-                fontSize: 12,
-                letterSpacing: "0.04em",
-              }}
-            >
-              {POST_GOAL_LABEL_BY_VALUE[session.post_goal]}
-            </span>
-          </div>
-        </div>
+        />
       ) : null}
       <div
         ref={scrollRef}
@@ -570,4 +535,272 @@ function stanceLabel(stance: Stance): string {
   if (stance === "clarify") return "A quick question";
   if (stance === "refine") return "Revised draft";
   return "Draft";
+}
+
+/**
+ * Top-bar goal control. Always renders (with either the active goal as a
+ * clickable chip, or "Pick a goal" when none is set). Clicking opens a
+ * modal-style picker that PATCHes the session post_goal. The next workshop
+ * turn picks up the change because runWorkshopTurn reads post_goal fresh
+ * from the DB on every turn.
+ */
+function SessionGoalBar({
+  session,
+  onChange,
+}: {
+  session: WorkshopSessionInfo;
+  onChange: (goal: PostGoal | null) => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const currentLabel = session.post_goal ? POST_GOAL_LABEL_BY_VALUE[session.post_goal] : null;
+
+  const pick = async (goal: PostGoal | null) => {
+    setSaving(true);
+    try {
+      await onChange(goal);
+      setOpen(false);
+    } catch {
+      // ignore — keep popover open so the user can retry
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        background: "var(--color-white)",
+        borderBottom: "1px solid var(--border-soft)",
+        padding: "10px 20px",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 760,
+          margin: "0 auto",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          fontSize: 13,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: 11,
+            letterSpacing: "0.16em",
+            textTransform: "uppercase",
+            color: "var(--text-on-light-muted)",
+            fontWeight: 700,
+          }}
+        >
+          Goal
+        </span>
+        {currentLabel ? (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            style={{
+              padding: "4px 12px",
+              borderRadius: "var(--radius-pill)",
+              background: "var(--color-pink)",
+              color: "var(--color-white)",
+              fontFamily: "var(--font-display)",
+              fontWeight: 700,
+              fontSize: 12,
+              letterSpacing: "0.04em",
+              border: 0,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            {currentLabel}
+            <span style={{ opacity: 0.78, fontSize: 10 }}>▾</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            style={{
+              padding: "4px 12px",
+              borderRadius: "var(--radius-pill)",
+              background: "transparent",
+              color: "var(--color-pink)",
+              border: "1.5px dashed var(--color-pink)",
+              fontFamily: "var(--font-display)",
+              fontWeight: 700,
+              fontSize: 12,
+              letterSpacing: "0.04em",
+              cursor: "pointer",
+            }}
+          >
+            Pick a goal →
+          </button>
+        )}
+        {currentLabel ? (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            style={{
+              border: 0,
+              background: "transparent",
+              color: "var(--color-pink)",
+              fontFamily: "var(--font-display)",
+              fontWeight: 700,
+              fontSize: 11,
+              letterSpacing: "0.16em",
+              textTransform: "uppercase",
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            Change
+          </button>
+        ) : null}
+      </div>
+
+      {open ? (
+        <GoalPickerModal
+          current={session.post_goal}
+          saving={saving}
+          onClose={() => setOpen(false)}
+          onPick={pick}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function GoalPickerModal({
+  current,
+  saving,
+  onClose,
+  onPick,
+}: {
+  current: PostGoal | null;
+  saving: boolean;
+  onClose: () => void;
+  onPick: (goal: PostGoal | null) => void;
+}) {
+  // Esc to close.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Pick a goal"
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(11, 16, 36, 0.62)",
+        zIndex: 30,
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "center",
+        padding: "60px 20px",
+        overflowY: "auto",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="card stack-4"
+        style={{
+          width: "min(640px, 100%)",
+          padding: 28,
+        }}
+      >
+        <div>
+          <h2 style={{ marginBottom: 4 }}>What do you want this post to do?</h2>
+          <p className="muted" style={{ margin: 0 }}>
+            Pick a goal to shape the next draft. You can change this any time.
+          </p>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: 8,
+          }}
+        >
+          {POST_GOAL_OPTIONS.map((opt) => {
+            const active = current === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => onPick(opt.value)}
+                disabled={saving}
+                style={{
+                  textAlign: "left",
+                  padding: "12px 14px",
+                  borderRadius: "var(--radius-md)",
+                  border: active
+                    ? "2px solid var(--color-pink)"
+                    : "1.5px solid var(--border-soft)",
+                  background: active ? "var(--color-navy)" : "var(--color-white)",
+                  color: active ? "var(--color-white)" : "var(--text-on-light)",
+                  cursor: saving ? "wait" : "pointer",
+                  fontFamily: "inherit",
+                  transition: "background 0.15s ease, color 0.15s ease",
+                  opacity: saving && !active ? 0.6 : 1,
+                }}
+              >
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14 }}>
+                  {opt.label}
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    marginTop: 2,
+                    color: active
+                      ? "rgba(255,255,255,0.78)"
+                      : "var(--text-on-light-muted)",
+                  }}
+                >
+                  {opt.hint}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          {current ? (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => onPick(null)}
+              disabled={saving}
+              style={{ padding: "8px 14px", fontSize: 13 }}
+            >
+              Clear goal
+            </button>
+          ) : (
+            <span />
+          )}
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={onClose}
+            disabled={saving}
+            style={{ padding: "8px 14px", fontSize: 13 }}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

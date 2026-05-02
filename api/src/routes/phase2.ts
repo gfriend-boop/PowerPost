@@ -50,9 +50,18 @@ import {
   setIdeaStatus,
 } from "../services/phase2/inspire.js";
 import { scoreDraft } from "../services/phase2/scoring.js";
+import { runWorkshopTurn } from "./workshop.js";
 import { computeAlignment } from "../services/phase2/alignment.js";
 import { getLinkedInSummary } from "../services/phase2/linkedin-summary.js";
 import { analysePost } from "../services/phase2/post-analysis.js";
+import { detectTopicsForUser } from "../services/phase2/detect-topics.js";
+import {
+  createUserTopic,
+  deleteTopic,
+  listForUser as listWatchedTopics,
+  seedFromOnboardingIfMissing,
+  updateTopic,
+} from "../services/phase2/watched-topics.js";
 import { HttpError, asyncHandler } from "../utils/http.js";
 
 const SelectedKpiEnum = z.enum([
@@ -199,25 +208,34 @@ router.post(
 
 /* ----- Get Inspired ----- */
 
+const IdeaSourceQuery = z.enum(["all", "proven", "adjacent", "timely", "stretch"]).optional();
+
 router.get(
   "/content/inspiration",
   requireAuth,
   asyncHandler(async (req, res) => {
-    let ideas = await listIdeas(req.user!.id);
-    if (ideas.length === 0) {
-      // First-time visit: auto-generate so the page is never empty.
-      ideas = await refreshIdeas(req.user!.id);
+    const ideaSource = IdeaSourceQuery.parse(req.query.idea_source) ?? "all";
+    let ideas = await listIdeas(req.user!.id, ideaSource);
+    if (ideas.length === 0 && ideaSource === "all") {
+      // First-time visit on the default tab: auto-generate so the page is never empty.
+      ideas = await refreshIdeas(req.user!.id, "all");
     }
-    res.json({ ideas });
+    res.json({ ideas, idea_source: ideaSource });
   }),
 );
+
+const RefreshSchema = z.object({
+  idea_source: z.enum(["all", "proven", "adjacent", "timely", "stretch"]).optional(),
+});
 
 router.post(
   "/content/inspiration/refresh",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const ideas = await refreshIdeas(req.user!.id);
-    res.status(201).json({ ideas });
+    const body = RefreshSchema.parse(req.body ?? {});
+    const ideaSource = body.idea_source ?? "all";
+    const ideas = await refreshIdeas(req.user!.id, ideaSource);
+    res.status(201).json({ ideas, idea_source: ideaSource });
   }),
 );
 
@@ -249,7 +267,7 @@ router.post(
     const idea = await getIdea(userId, req.params.idea_id!);
     if (!idea) throw new HttpError(404, "Idea not found");
 
-    const seed = `${idea.title}. ${idea.workshop_seed_prompt}`;
+    const seed = `I want to workshop this idea: ${idea.title}.\n\n${idea.suggested_angle}\n\n${idea.workshop_seed_prompt}`;
     const result = await pool.query<{ workshop_id: string }>(
       `INSERT INTO workshop_sessions (user_id, title, status)
        VALUES ($1, $2, 'active') RETURNING workshop_id`,
@@ -263,7 +281,11 @@ router.post(
     );
     await setIdeaStatus(userId, idea.idea_id, "used");
 
-    res.status(201).json({ workshop_id: workshopId, idea });
+    // Actually run the first LLM turn so the user lands on a Workshop session
+    // that has a coach reply waiting, not a dead-end with just their opener.
+    const reply = await runWorkshopTurn(userId, workshopId);
+
+    res.status(201).json({ workshop_id: workshopId, idea, reply });
   }),
 );
 
@@ -353,6 +375,72 @@ router.patch(
       });
     }
     res.json({ preference: pref });
+  }),
+);
+
+/* ----- Watched Topics ----- */
+
+router.get(
+  "/topics/watch",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const userId = req.user!.id;
+    // Lazy seed onboarding topics on first read so the UI never shows an
+    // empty state when the user has topic_authorities from onboarding.
+    await seedFromOnboardingIfMissing(userId);
+    const topics = await listWatchedTopics(userId);
+    res.json({ topics });
+  }),
+);
+
+const CreateTopicSchema = z.object({
+  label: z.string().min(2).max(120),
+  priority: z.enum(["normal", "high"]).optional(),
+});
+
+router.post(
+  "/topics/watch",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const body = CreateTopicSchema.parse(req.body);
+    const topic = await createUserTopic(req.user!.id, body.label, body.priority);
+    res.status(201).json({ topic });
+  }),
+);
+
+const PatchTopicSchema = z.object({
+  status: z.enum(["suggested", "active", "paused", "dismissed"]).optional(),
+  priority: z.enum(["normal", "high"]).optional(),
+  label: z.string().min(2).max(120).optional(),
+});
+
+router.patch(
+  "/topics/watch/:id",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const body = PatchTopicSchema.parse(req.body);
+    const topic = await updateTopic(req.user!.id, req.params.id!, body);
+    if (!topic) throw new HttpError(404, "Watched topic not found");
+    res.json({ topic });
+  }),
+);
+
+router.delete(
+  "/topics/watch/:id",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const ok = await deleteTopic(req.user!.id, req.params.id!);
+    if (!ok) throw new HttpError(404, "Watched topic not found");
+    res.json({ ok: true });
+  }),
+);
+
+router.post(
+  "/topics/watch/detect-from-posts",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const result = await detectTopicsForUser(req.user!.id);
+    res.json(result);
   }),
 );
 

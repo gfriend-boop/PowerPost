@@ -1,6 +1,7 @@
 import { pool } from "./pool.js";
 
 const TABLES = [
+  "watched_topics",
   "improvement_suggestions",
   "inspiration_ideas",
   "post_scores",

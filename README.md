@@ -18,6 +18,7 @@ PowerPost by PowerSpeak Academy. A LinkedIn voice tool for executives, founders,
 - **Workshop post goal** — every new Workshop session asks "What do you want this post to do?" up front (8 options including "Just sound like me"). The goal is stored on the session and shaped into the LLM's system prompt so the draft and rationale honour it
 - **LinkedIn insights widget** — the dashboard now shows posts analysed, top posts by impressions/comments/reactions, 30-day and 6-month totals, and a "What PowerPost noticed" coaching line generated from the user's actual post history (cached for 24h, busted automatically on a fresh post sync). Posts are pulled via cursor-based pagination (up to 500 per sync), and a stale check (>6h since last sync) auto-fires a background re-sync on dashboard load
 - **Top post analysis** — every top-post card on the LinkedIn widget is clickable. Opens a modal with the full post, "why this worked" (referencing real phrases and structural choices), the voice traits PowerPost detected in it, and 2-3 carry-forward takeaways with explicit voice-alignment notes. "Workshop a post like this" CTA seeds a new Workshop session
+- **Idea Source control + Topics to Watch** — Get Inspired has an idea-source pill control (All / Proven / Adjacent / Timely / Stretch). Timely ideas only generate when the user has active Topics to Watch and each one is gated server-side on a non-empty timeliness_rationale that references a watched topic, prior post, voice trait, or stated goal. Topics to Watch are managed from `/voice/edit` — manual add, "Detect topics" button that surfaces suggestions from cached posts, plus per-topic priority / pause / resume / dismiss controls
 - **Calm thinking states** — every LLM-bound action (Workshop turn, Improve analyze, Optimize, Inspire refresh, Score) uses the shared `ThinkingState` component with rotating coach-voice status messages instead of a generic spinner
 - **Light logos on dark surfaces** — header, footer, onboarding splash, and the Workshop coach avatar all use the light-on-dark logo variants
 
@@ -192,6 +193,12 @@ When the second-place archetype is within 15% of the leader, it is surfaced on t
 ```
 GET    /analytics/linkedin-summary
 GET    /analytics/posts/:post_id/analysis
+
+GET    /topics/watch
+POST   /topics/watch
+PATCH  /topics/watch/:id
+DELETE /topics/watch/:id
+POST   /topics/watch/detect-from-posts
 
 POST   /content/score
 POST   /content/optimize

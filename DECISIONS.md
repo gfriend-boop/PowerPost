@@ -338,3 +338,54 @@ These are explicit Phase 2 scope decisions to defer (per Build Prompt deferrals 
 **Why:** Per the brief, the existing top-post cards weren't doing useful work. The analysis prompt is hard-constrained to reference actual phrases from the post, name specific mechanisms (not generic "add a hook" advice), and explicitly call out when applying a takeaway would stretch or honour the user's existing voice profile.
 
 **Workshop handoff:** "Workshop a post like this" stores the first takeaway as a seed in `sessionStorage` under `pp_workshop_seed` and navigates to `/workshop`. The Workshop start screen reads it on mount and pre-fills the seed textarea. Same pattern as the Improve handoff from Workshop drafts.
+
+---
+
+# Idea Source + Topics to Watch (Phase 2 follow-up)
+
+## Idea Source as a filter, not a separate feature
+
+**Choice:** Get Inspired exposes an `idea_source` pill control (All / Proven / Adjacent / Timely / Stretch) that maps to source_type filtering on the backend. Timely is one source type alongside performance_pattern, adjacent_theme, and voice_gap — NOT a separate Trends tab or Current Events feature. Source type → UI badge mapping:
+- `performance_pattern` → Proven Theme
+- `adjacent_theme` → Adjacent Angle
+- `voice_gap` → Voice Stretch
+- `timely` → Timely
+- `manual_seed` → Seeded
+
+**Why:** Per the Phase 2 scope update brief: timely ideas should not chase trends as a feature; they should be one type within the broader feed, gated on user relevance.
+
+## Timely is gated on watched topics + relevance rationale
+
+**Choice:** Timely ideas only generate when the user has at least one active Watched Topic. The LLM prompt requires a `timeliness_rationale` field that names the specific user connection (a watched topic, a prior high-performing post, a voice trait, or a stated goal). Server-side, any timely idea returned without a non-trivial `timeliness_rationale` is dropped before insert with a console warning.
+
+**Why:** The brief is explicit: "Never suggest a timely idea just because it is trending." The dual gate (active watched topic + required rationale) makes the rule structural rather than depending only on prompt obedience.
+
+## No external trends/news provider
+
+**Choice:** Phase 2 does not integrate an external news or trends API. Timely ideas are generated using (a) active Watched Topics as query inputs, (b) the user's voice profile and post history, and (c) Claude's general knowledge of conversations adjacent to those topics.
+
+**Why:** The brief allows for a provider but doesn't require one. Adding a real-time news provider is a non-trivial integration with its own freshness, cost, and rate-limit constraints. The watched-topics + LLM-only approach satisfies the user's intent (get me timely angles I'd actually post) without adding an external dependency.
+
+**Future:** When a provider lands, plug it into `inspire.ts` before the LLM call to fetch headlines for each active high-priority watched topic, then pass them in as additional evidence. The prompt already accepts watched topics as inputs; adding "today's relevant headlines per topic" is a small extension.
+
+## Detected topics are suggestions, not commands
+
+**Choice:** `POST /topics/watch/detect-from-posts` runs an LLM call against the user's top + recent posts and returns 4–7 candidate topics with reasons grounded in specific posts. They land in `watched_topics` with `status='suggested'`, NOT `'active'`. The user must explicitly confirm before they influence Timely idea generation.
+
+**Why:** The brief is explicit: "Detected topics are suggestions, not commands. Do not silently activate every detected topic."
+
+**Re-suggest guard:** If the user previously dismissed a topic label, the detector skips re-suggesting it (checked in `upsertSuggested`). Confidence floor of 0.4 also drops weak candidates.
+
+## Onboarding seed lazy + idempotent
+
+**Choice:** The first time a user reads `/topics/watch`, we lazy-seed their topic_authorities from onboarding into the watched_topics table as `source='onboarding'`, `status='active'`, `priority='normal'`. Idempotent — only runs when the user has zero existing watched topics.
+
+**Why:** Otherwise the page is empty for any user who completed onboarding before this feature shipped. Seeding once on first read avoids needing a backfill migration.
+
+## Tracking events
+
+The brief lists eight tracking events (idea_source_selected, watched_topic_*, timely_idea_*). For now we lean on existing infrastructure:
+- Watched-topic accept/dismiss/pause/priority changes already write `feedback_events` rows under the `voice_settings` surface (any PATCH on a watched topic logs naturally via the route's audit trail)
+- idea_source_selected, timely_idea_generated, timely_idea_used are not yet wired to a dedicated events stream — they're console-logged via existing API logs
+
+**Revisit:** When real analytics infrastructure lands (Mixpanel / PostHog / Segment), wire these events explicitly. The data needed is already on hand; only the destination is missing.

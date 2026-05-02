@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ApiError, api } from "../api/client";
 import { LearnedPreferences } from "../components/LearnedPreferences";
+import { WatchedTopics } from "../components/WatchedTopics";
 
 type Profile = {
   archetype: string;
@@ -700,6 +701,18 @@ export function EditVoice() {
             onChange={(e) => set({ never_be_mistaken_for: e.target.value })}
           />
         </Section>
+
+        <section className="card stack-3" style={{ marginTop: 32 }}>
+          <div>
+            <h2 style={{ margin: 0 }}>Topics to watch</h2>
+            <p className="muted" style={{ margin: "4px 0 0", fontSize: 14 }}>
+              The conversations PowerPost should track for you. Used to find timely ideas in Get
+              Inspired. Add your own, accept suggestions from your post history, mark a topic high
+              priority when it really matters.
+            </p>
+          </div>
+          <WatchedTopics />
+        </section>
 
         <section className="card stack-3" style={{ marginTop: 32 }}>
           <div>
