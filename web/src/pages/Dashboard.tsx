@@ -29,20 +29,12 @@ type WorkshopSession = {
   last_message_at: string;
 };
 
-type DraftRow = {
-  content_id: string;
-  draft_content: string;
-  created_at: string;
-  status: string;
-};
-
 export function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<VoiceProfile | null>(null);
   const [archetype, setArchetype] = useState<Archetype | null>(null);
   const [sessions, setSessions] = useState<WorkshopSession[]>([]);
-  const [drafts, setDrafts] = useState<DraftRow[]>([]);
   const [starting, setStarting] = useState(false);
 
   useEffect(() => {
@@ -50,12 +42,10 @@ export function Dashboard() {
       api.get<{ profile: VoiceProfile | null }>("/voice-profile"),
       api.get<{ archetype: Archetype }>("/voice-profile/archetype-preview").catch(() => null),
       api.get<{ sessions: WorkshopSession[] }>("/workshop"),
-      api.get<{ drafts: DraftRow[] }>("/content/drafts"),
-    ]).then(([p, a, s, d]) => {
+    ]).then(([p, a, s]) => {
       setProfile(p.profile);
       if (a) setArchetype(a.archetype);
       setSessions(s.sessions);
-      setDrafts(d.drafts.slice(0, 5));
     });
   }, []);
 
@@ -268,31 +258,6 @@ export function Dashboard() {
             <LinkedInInsights />
           </aside>
         </div>
-
-        {drafts.length > 0 ? (
-          <section className="card stack-3" style={{ marginTop: 32 }}>
-            <h2 style={{ margin: 0 }}>Recent drafts</h2>
-            {drafts.map((d) => (
-              <div
-                key={d.content_id}
-                style={{
-                  borderTop: "1px solid var(--border-soft)",
-                  paddingTop: 16,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 6,
-                }}
-              >
-                <span className="muted" style={{ fontSize: 13 }}>
-                  {new Date(d.created_at).toLocaleString()} · {d.status}
-                </span>
-                <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-                  {d.draft_content.length > 280 ? d.draft_content.slice(0, 280) + "..." : d.draft_content}
-                </p>
-              </div>
-            ))}
-          </section>
-        ) : null}
       </div>
     </div>
   );
