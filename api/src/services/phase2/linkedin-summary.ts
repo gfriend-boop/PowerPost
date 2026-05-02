@@ -10,11 +10,13 @@
 
 import { config } from "../../config.js";
 import { pool } from "../../db/pool.js";
+import { syncPostsForUser } from "../../routes/linkedin.js";
 import { getLLMClient } from "../llm/anthropic.js";
 import { buildPhase2System, loadPromptContext } from "../llm/phase2-prompts.js";
 import { parseLooseJson } from "../llm/validators.js";
 
 const INSIGHT_TTL_HOURS = 24;
+const STALE_SYNC_HOURS = 6;
 
 export type TopPostSummary = {
   post_id: string;
@@ -66,9 +68,11 @@ export async function getLinkedInSummary(userId: string): Promise<LinkedInSummar
       is_demo: boolean;
       insight_text: string | null;
       insight_generated_at: string | null;
+      unipile_account_id: string | null;
     }>(
       `SELECT last_synced_at::text AS last_synced_at, is_demo, insight_text,
-              insight_generated_at::text AS insight_generated_at
+              insight_generated_at::text AS insight_generated_at,
+              unipile_account_id
          FROM linkedin_accounts WHERE user_id = $1`,
       [userId],
     )
@@ -76,6 +80,23 @@ export async function getLinkedInSummary(userId: string): Promise<LinkedInSummar
 
   if (!accountRow) {
     return emptySummary({ connected: false, is_demo: false });
+  }
+
+  // Auto-resync if the cached posts are stale. Runs in the background so
+  // the dashboard load isn't blocked. The current request returns whatever
+  // is in the DB; the next visit picks up fresh data.
+  if (
+    accountRow.unipile_account_id &&
+    !accountRow.is_demo &&
+    isStaleSync(accountRow.last_synced_at)
+  ) {
+    const accountId = accountRow.unipile_account_id;
+    console.log(`[linkedin-summary] last_synced_at stale for ${userId}, kicking off background sync`);
+    setImmediate(() => {
+      void syncPostsForUser(userId, accountId).catch((err) => {
+        console.error("[linkedin-summary] background sync failed:", err);
+      });
+    });
   }
 
   const posts = (
@@ -156,6 +177,7 @@ export async function getLinkedInSummary(userId: string): Promise<LinkedInSummar
     userId,
     accountRow.insight_text,
     accountRow.insight_generated_at,
+    accountRow.last_synced_at,
     posts,
     totals,
   );
@@ -180,13 +202,17 @@ async function ensureInsight(
   userId: string,
   cachedText: string | null,
   cachedAt: string | null,
+  lastSyncedAt: string | null,
   posts: Array<{ post_id: string; content: string; posted_at: string; impressions: string; likes: string; comments: string; shares: string; clicks: string }>,
   totals: { impressions: number; likes: number; comments: number; shares: number; clicks: number },
 ): Promise<{ insight: string; generated_at: string | null }> {
+  // Cache is fresh only if it (a) exists, (b) is younger than the TTL, AND
+  // (c) was generated AFTER the most recent post sync. A new sync busts it.
   const cacheStillFresh =
     cachedText &&
     cachedAt &&
-    Date.now() - Date.parse(cachedAt) < INSIGHT_TTL_HOURS * 60 * 60 * 1000;
+    Date.now() - Date.parse(cachedAt) < INSIGHT_TTL_HOURS * 60 * 60 * 1000 &&
+    (!lastSyncedAt || Date.parse(cachedAt) >= Date.parse(lastSyncedAt));
   if (cacheStillFresh) {
     return { insight: cachedText, generated_at: cachedAt };
   }
@@ -270,6 +296,13 @@ ${evidenceLines}`;
   );
 
   return { insight, generated_at: new Date().toISOString() };
+}
+
+function isStaleSync(lastSyncedAt: string | null): boolean {
+  if (!lastSyncedAt) return true;
+  const ageMs = Date.now() - Date.parse(lastSyncedAt);
+  if (!Number.isFinite(ageMs)) return true;
+  return ageMs > STALE_SYNC_HOURS * 60 * 60 * 1000;
 }
 
 function preview(content: string, n = 140): string {

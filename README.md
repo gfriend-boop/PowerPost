@@ -16,7 +16,8 @@ PowerPost by PowerSpeak Academy. A LinkedIn voice tool for executives, founders,
 - **Feedback capture + Learned preferences** — explicit (thumbs / notes) and implicit (accepted/rejected suggestions, finalisations, optimisations) feedback flows into a learned-preferences extractor that proposes user-confirmable patterns. Confirmed preferences inject into every future LLM prompt
 - **Alignment Widget** on the dashboard — voice and performance trends, drift detection, and a single recommended action grounded in the user's recent scores
 - **Workshop post goal** — every new Workshop session asks "What do you want this post to do?" up front (8 options including "Just sound like me"). The goal is stored on the session and shaped into the LLM's system prompt so the draft and rationale honour it
-- **LinkedIn insights widget** — the dashboard now shows posts analysed, top posts by impressions/comments/reactions, 30-day and 6-month totals, and a "What PowerPost noticed" coaching line generated from the user's actual post history (cached for 24h on the linkedin_accounts row)
+- **LinkedIn insights widget** — the dashboard now shows posts analysed, top posts by impressions/comments/reactions, 30-day and 6-month totals, and a "What PowerPost noticed" coaching line generated from the user's actual post history (cached for 24h, busted automatically on a fresh post sync). Posts are pulled via cursor-based pagination (up to 500 per sync), and a stale check (>6h since last sync) auto-fires a background re-sync on dashboard load
+- **Top post analysis** — every top-post card on the LinkedIn widget is clickable. Opens a modal with the full post, "why this worked" (referencing real phrases and structural choices), the voice traits PowerPost detected in it, and 2-3 carry-forward takeaways with explicit voice-alignment notes. "Workshop a post like this" CTA seeds a new Workshop session
 - **Calm thinking states** — every LLM-bound action (Workshop turn, Improve analyze, Optimize, Inspire refresh, Score) uses the shared `ThinkingState` component with rotating coach-voice status messages instead of a generic spinner
 - **Light logos on dark surfaces** — header, footer, onboarding splash, and the Workshop coach avatar all use the light-on-dark logo variants
 
@@ -190,6 +191,7 @@ When the second-place archetype is within 15% of the leader, it is surfaced on t
 
 ```
 GET    /analytics/linkedin-summary
+GET    /analytics/posts/:post_id/analysis
 
 POST   /content/score
 POST   /content/optimize

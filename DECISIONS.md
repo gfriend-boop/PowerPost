@@ -298,3 +298,43 @@ These are explicit Phase 2 scope decisions to defer (per Build Prompt deferrals 
 **Files:** Added `psa-primary-light.svg` and `psa-text-light.svg` to `web/public/logos/` alongside the existing square-light. Updated Shell header, Shell footer, Onboarding splash, and the CoachBubble avatar to use `tone="light"` everywhere they sit on a dark navy / pink surface.
 
 **Why:** The brief noted the previous Phase 2 round had logos that didn't always read on dark surfaces. The explicit `tone` prop makes intent obvious at every call site.
+
+---
+
+# Phase 2 Refinements (round 2 — post-Unipile-debugging)
+
+## Unipile two-step fetch
+
+**Choice:** `fetchPostHistory` now does a two-step lookup. First it calls `GET /api/v1/accounts/{account_id}` to resolve the connected user's LinkedIn profile identifier (typically `connection_params.im.public_identifier`, with fallbacks for `entity_urn` and a few other nest paths). Then it calls `GET /api/v1/users/{profile_id}/posts?account_id=...` for the actual posts.
+
+**Why:** Unipile's posts endpoint requires a real LinkedIn profile identifier, not the keyword `me`. The 422 "errors/invalid_recipient" we saw was Unipile telling us `me` wasn't a valid recipient. The two-step flow is now stable and logs each step verbosely.
+
+## Cursor-based pagination + 500-post cap
+
+**Choice:** `fetchPostHistory` loops on Unipile's `cursor` field, calling page after page until either the cursor stops advancing OR we've collected 500 posts. Each request fetches 100 (Unipile's max page size).
+
+**Why:** Phase 2 originally only fetched the first 100. Many users have more history, and the scoring + insight quality scales with how much real evidence we have. 500 is a sane cap to prevent runaway syncs and keep our `posts` table from ballooning. Easy to lift later — `MAX_POSTS` constant in `services/unipile.ts`.
+
+**Failure mode:** If a paginated request fails partway through, we keep what we already collected and stop, rather than wiping the user's already-synced history. The next sync attempt picks up fresh.
+
+## Insight cache busts on new sync
+
+**Choice:** The "What PowerPost noticed" line is cached on `linkedin_accounts.insight_text` with `insight_generated_at`. Cache is now considered fresh ONLY if `insight_generated_at >= last_synced_at` AND it's within the 24h TTL. A new sync flips the inequality and forces regeneration on the next dashboard load.
+
+**Why:** The original 24h TTL was time-only, so a fresh sync within the window left the user staring at an outdated insight. Now the insight follows the data.
+
+## Auto-sync on dashboard load if stale
+
+**Choice:** When `getLinkedInSummary` is called, if `last_synced_at` is more than 6 hours old AND the account isn't in demo mode, we kick off `syncPostsForUser` via `setImmediate` and return whatever's currently in the DB. The next page load shows fresh data.
+
+**Why:** User explicitly asked for "look for new posts every time someone logs in" without a manual button. 6 hours is the right tradeoff between freshness and avoiding LLM-cost-bearing re-syncs every minute. The `setImmediate` keeps it non-blocking; the dashboard load is unaffected.
+
+**Limit:** This still won't hit Unipile if multiple dashboard loads land within the same 6h window — desired behaviour. If you want a "force re-sync now" button for manual override, that's a separate quick add.
+
+## Post analysis ("why this worked")
+
+**Choice:** New endpoint `GET /analytics/posts/:post_id/analysis` calls Claude with the post text, its metrics, two lower-engagement comparison posts, the user's voice profile, and learned preferences. Returns structured JSON: `why_it_worked`, `voice_traits`, `takeaways[]` (each with `idea` + `voice_alignment`), and `standout_metric`. Cached on `posts.analysis_text` with 24h TTL — so repeated clicks don't re-spend.
+
+**Why:** Per the brief, the existing top-post cards weren't doing useful work. The analysis prompt is hard-constrained to reference actual phrases from the post, name specific mechanisms (not generic "add a hook" advice), and explicitly call out when applying a takeaway would stretch or honour the user's existing voice profile.
+
+**Workshop handoff:** "Workshop a post like this" stores the first takeaway as a seed in `sessionStorage` under `pp_workshop_seed` and navigates to `/workshop`. The Workshop start screen reads it on mount and pre-fills the seed textarea. Same pattern as the Improve handoff from Workshop drafts.

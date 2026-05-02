@@ -52,6 +52,7 @@ import {
 import { scoreDraft } from "../services/phase2/scoring.js";
 import { computeAlignment } from "../services/phase2/alignment.js";
 import { getLinkedInSummary } from "../services/phase2/linkedin-summary.js";
+import { analysePost } from "../services/phase2/post-analysis.js";
 import { HttpError, asyncHandler } from "../utils/http.js";
 
 const SelectedKpiEnum = z.enum([
@@ -372,6 +373,15 @@ router.get(
   asyncHandler(async (req, res) => {
     const summary = await getLinkedInSummary(req.user!.id);
     res.json(summary);
+  }),
+);
+
+router.get(
+  "/analytics/posts/:post_id/analysis",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const result = await analysePost(req.user!.id, req.params.post_id!);
+    res.json(result);
   }),
 );
 

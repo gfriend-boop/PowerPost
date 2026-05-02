@@ -313,6 +313,20 @@ Return TWO paths if there is a meaningful difference between optimising for voic
 
 Each recommendation must include specific suggested replacement text. No vague advice. No clickbait. No em dashes. No broetry. Reference the user's actual prior posts (by post_id in evidence_post_id) when relevant.
 
+PLACEMENT METADATA (critical for the app to apply the change in the right spot):
+
+For every recommendation also include:
+- "change_type": one of "replace" | "insert_after" | "insert_before" | "append" | "trim"
+  - "replace": swap a specific chunk of the original draft for new text.
+  - "insert_after": add new text immediately after a specific anchor in the draft.
+  - "insert_before": add new text immediately before a specific anchor.
+  - "append": add new text at the end. Use this if no good anchor exists.
+  - "trim": remove a specific chunk with no replacement.
+- "target_text": the EXACT verbatim substring of the original draft this change targets, character-for-character (including punctuation, capitalisation, and line breaks). Required for "replace" and "trim". Empty string otherwise.
+- "anchor_text": the EXACT verbatim substring of the original draft to attach the new text to. Required for "insert_after" and "insert_before". Empty string otherwise.
+
+CRITICAL: target_text and anchor_text MUST be exact substrings of the original draft. Do not paraphrase. Do not summarise. If you cannot find an exact substring to anchor to, use change_type "append" so the new text lands at the end of the draft. The "what_to_change" field is for the user-readable description and CAN be a paraphrase; target_text and anchor_text cannot.
+
 Return JSON ONLY, matching exactly this schema:
 
 {
@@ -323,7 +337,10 @@ Return JSON ONLY, matching exactly this schema:
       "recommendations": [
         {
           "title": "<short label>",
-          "what_to_change": "<specific, concrete>",
+          "change_type": "replace" | "insert_after" | "insert_before" | "append" | "trim",
+          "target_text": "<exact substring of the original draft, or empty>",
+          "anchor_text": "<exact substring of the original draft, or empty>",
+          "what_to_change": "<plain English description for the user>",
           "why_it_matters": "<plain English, references user's voice or evidence>",
           "suggested_replacement_text": "<the exact text to drop in>",
           "voice_impact": "positive" | "neutral" | "negative",

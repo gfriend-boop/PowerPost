@@ -153,6 +153,9 @@ export async function startHostedAuth(
  * change does not silently produce empty rows.
  */
 
+const PAGE_SIZE = 100;
+const MAX_POSTS = 500;
+
 export async function fetchPostHistory(unipileAccountId: string): Promise<UnipilePost[]> {
   if (!isUnipileConfigured()) {
     console.log("[unipile] fetchPostHistory: not configured, returning demo posts");
@@ -166,39 +169,69 @@ export async function fetchPostHistory(unipileAccountId: string): Promise<Unipil
     );
   }
 
-  const url = `https://${config.unipile.dsn}/api/v1/users/${encodeURIComponent(profileId)}/posts?account_id=${encodeURIComponent(unipileAccountId)}&limit=100`;
-  console.log("[unipile] fetchPostHistory GET", url);
+  const collected: UnipilePost[] = [];
+  let cursor: string | null = null;
+  let page = 0;
 
-  const res = await fetch(url, {
-    headers: {
-      "X-API-KEY": config.unipile.apiKey,
-      Accept: "application/json",
-    },
-  });
+  while (collected.length < MAX_POSTS) {
+    page++;
+    const params = new URLSearchParams({
+      account_id: unipileAccountId,
+      limit: String(PAGE_SIZE),
+    });
+    if (cursor) params.set("cursor", cursor);
+    const url = `https://${config.unipile.dsn}/api/v1/users/${encodeURIComponent(profileId)}/posts?${params.toString()}`;
+    console.log(`[unipile] fetchPostHistory page=${page}`, cursor ? `cursor=${cursor.slice(0, 12)}...` : "(no cursor)");
 
-  const bodyText = await res.text();
-  if (!res.ok) {
-    console.error(`[unipile] posts fetch failed ${res.status}: ${bodyText.slice(0, 400)}`);
-    throw new Error(`Unipile posts fetch failed: ${res.status}`);
+    const res = await fetch(url, {
+      headers: {
+        "X-API-KEY": config.unipile.apiKey,
+        Accept: "application/json",
+      },
+    });
+
+    const bodyText = await res.text();
+    if (!res.ok) {
+      console.error(`[unipile] posts fetch failed ${res.status}: ${bodyText.slice(0, 400)}`);
+      // Stop pagination on error but return what we have so far rather than
+      // wiping the user's already-synced backlog.
+      break;
+    }
+
+    let json: { items?: unknown[]; data?: unknown[]; results?: unknown[]; cursor?: string | null };
+    try {
+      json = JSON.parse(bodyText);
+    } catch {
+      console.error("[unipile] posts response was not valid JSON:", bodyText.slice(0, 400));
+      break;
+    }
+
+    const items = (json.items ?? json.data ?? json.results ?? []) as Array<Record<string, unknown>>;
+    if (page === 1) {
+      console.log(
+        `[unipile] page=${page} returned ${items.length} item(s). Top-level keys: ${Object.keys(json).join(", ") || "(none)"}`,
+      );
+      if (items.length > 0) {
+        console.log("[unipile] sample post item keys:", Object.keys(items[0] ?? {}).join(", "));
+      }
+    } else {
+      console.log(`[unipile] page=${page} returned ${items.length} item(s)`);
+    }
+
+    for (const item of items) {
+      collected.push(mapUnipilePost(item));
+      if (collected.length >= MAX_POSTS) break;
+    }
+
+    const nextCursor = typeof json.cursor === "string" && json.cursor.length > 0 ? json.cursor : null;
+    if (!nextCursor || items.length < PAGE_SIZE) {
+      break;
+    }
+    cursor = nextCursor;
   }
 
-  let json: { items?: unknown[]; data?: unknown[]; results?: unknown[] };
-  try {
-    json = JSON.parse(bodyText);
-  } catch {
-    console.error("[unipile] posts response was not valid JSON:", bodyText.slice(0, 400));
-    throw new Error("Unipile posts response was not valid JSON");
-  }
-
-  const items = (json.items ?? json.data ?? json.results ?? []) as Array<Record<string, unknown>>;
-  console.log(
-    `[unipile] posts returned ${items.length} item(s). Top-level keys: ${Object.keys(json).join(", ") || "(none)"}`,
-  );
-  if (items.length > 0) {
-    console.log("[unipile] sample post item keys:", Object.keys(items[0] ?? {}).join(", "));
-  }
-
-  return items.map(mapUnipilePost);
+  console.log(`[unipile] fetchPostHistory done. Collected ${collected.length} post(s) over ${page} page(s).`);
+  return collected;
 }
 
 /**

@@ -73,6 +73,9 @@ const KPI_LABEL: Record<Kpi, string> = {
 type Recommendation = {
   recommendation_id: string;
   title: string;
+  change_type?: "replace" | "insert_after" | "insert_before" | "append" | "trim";
+  target_text?: string;
+  anchor_text?: string;
   what_to_change: string;
   why_it_matters: string;
   suggested_replacement_text: string;
@@ -80,6 +83,7 @@ type Recommendation = {
   performance_impact: "positive" | "neutral" | "negative";
   evidence_post_id: string | null;
   status: "pending" | "accepted" | "rejected";
+  apply_status?: "applied" | "appended_fallback" | "no_match";
 };
 
 type Path = {
@@ -696,6 +700,31 @@ function RecommendationCard({
         >
           {rec.suggested_replacement_text}
         </div>
+      ) : null}
+      {accepted && rec.apply_status === "appended_fallback" ? (
+        <p
+          style={{
+            margin: "10px 0 0",
+            fontSize: 12,
+            color: "var(--color-pink)",
+            fontWeight: 600,
+          }}
+        >
+          Heads up: PowerPost couldn't precisely match the spot in your draft, so the suggested
+          text was appended at the end. Move it to the right place by hand.
+        </p>
+      ) : null}
+      {accepted && rec.apply_status === "no_match" ? (
+        <p
+          style={{
+            margin: "10px 0 0",
+            fontSize: 12,
+            color: "#c81d6a",
+            fontWeight: 600,
+          }}
+        >
+          PowerPost couldn't find the original chunk to remove. The draft was left as-is.
+        </p>
       ) : null}
       <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
         <button

@@ -92,6 +92,23 @@ export function Workshop() {
       });
   }, [workshopId]);
 
+  // If the user clicked "Workshop a post like this" from the LinkedIn insights
+  // modal, the seed text is waiting in sessionStorage. Drop it into the seed
+  // textarea on the start screen so they don't have to retype it.
+  useEffect(() => {
+    if (workshopId) return;
+    try {
+      const raw = sessionStorage.getItem("pp_workshop_seed");
+      if (raw) {
+        const parsed = JSON.parse(raw) as { seed?: string };
+        if (parsed.seed) setSeed(parsed.seed);
+        sessionStorage.removeItem("pp_workshop_seed");
+      }
+    } catch {
+      // ignore
+    }
+  }, [workshopId]);
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;

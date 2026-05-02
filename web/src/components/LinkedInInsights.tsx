@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
+import { PostAnalysisModal } from "./PostAnalysisModal";
 
 type TopPost = {
   post_id: string;
@@ -37,6 +38,7 @@ type Summary = {
 export function LinkedInInsights() {
   const [data, setData] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [analysisPostId, setAnalysisPostId] = useState<string | null>(null);
 
   useEffect(() => {
     void api
@@ -158,10 +160,23 @@ export function LinkedInInsights() {
 
       <div className="stack-2">
         <span className="field-label">Top posts</span>
-        {data.top_by_impressions ? <TopPostCard post={data.top_by_impressions} /> : null}
-        {data.top_by_comments ? <TopPostCard post={data.top_by_comments} /> : null}
-        {data.top_by_likes ? <TopPostCard post={data.top_by_likes} /> : null}
+        {data.top_by_impressions ? (
+          <TopPostCard post={data.top_by_impressions} onClick={() => setAnalysisPostId(data.top_by_impressions!.post_id)} />
+        ) : null}
+        {data.top_by_comments ? (
+          <TopPostCard post={data.top_by_comments} onClick={() => setAnalysisPostId(data.top_by_comments!.post_id)} />
+        ) : null}
+        {data.top_by_likes ? (
+          <TopPostCard post={data.top_by_likes} onClick={() => setAnalysisPostId(data.top_by_likes!.post_id)} />
+        ) : null}
       </div>
+
+      {analysisPostId ? (
+        <PostAnalysisModal
+          postId={analysisPostId}
+          onClose={() => setAnalysisPostId(null)}
+        />
+      ) : null}
     </section>
   );
 }
@@ -256,30 +271,67 @@ function WindowCard({ label, data }: { label: string; data: WindowTotals }) {
   );
 }
 
-function TopPostCard({ post }: { post: TopPost }) {
+function TopPostCard({ post, onClick }: { post: TopPost; onClick?: () => void }) {
   return (
-    <div
+    <button
+      type="button"
+      onClick={onClick}
       style={{
+        textAlign: "left",
+        cursor: "pointer",
+        width: "100%",
         borderLeft: "3px solid var(--color-pink)",
+        border: "1px solid var(--border-soft)",
+        borderLeftWidth: 3,
+        borderLeftColor: "var(--color-pink)",
         background: "var(--color-off-white)",
         padding: "10px 14px",
         borderRadius: "var(--radius-md)",
         fontSize: 13.5,
         lineHeight: 1.55,
+        fontFamily: "inherit",
+        color: "var(--text-on-light)",
+        transition: "background 0.15s ease, transform 0.1s ease",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = "var(--color-white)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "var(--color-off-white)";
       }}
     >
       <div
         style={{
-          fontFamily: "var(--font-display)",
-          fontSize: 10,
-          letterSpacing: "0.14em",
-          textTransform: "uppercase",
-          color: "var(--color-pink)",
-          fontWeight: 700,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
           marginBottom: 4,
         }}
       >
-        Top by {post.metric_label} · {formatNumber(post.metric_value)}
+        <div
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: 10,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: "var(--color-pink)",
+            fontWeight: 700,
+          }}
+        >
+          Top by {post.metric_label} · {formatNumber(post.metric_value)}
+        </div>
+        <span
+          style={{
+            fontSize: 11,
+            color: "var(--text-on-light-muted)",
+            fontFamily: "var(--font-display)",
+            fontWeight: 700,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+          }}
+        >
+          Analyse →
+        </span>
       </div>
       <div>{post.content_preview}</div>
       <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
@@ -289,7 +341,7 @@ function TopPostCard({ post }: { post: TopPost }) {
           day: "numeric",
         })}
       </div>
-    </div>
+    </button>
   );
 }
 
