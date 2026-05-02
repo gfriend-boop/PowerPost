@@ -141,6 +141,15 @@ export async function refreshIdeas(
   const parsed = parseLooseJson<{ ideas?: RawIdea[] }>(response.text);
   const rawIdeas = parsed?.ideas ?? [];
 
+  console.log(
+    `[inspire] idea_source=${ideaSource} watched_topics=${watchedTopics.length} llm returned ${rawIdeas.length} idea(s)`,
+  );
+  if (rawIdeas.length === 0) {
+    console.warn(
+      `[inspire] LLM returned no ideas. First 400 chars of response: ${response.text.slice(0, 400)}`,
+    );
+  }
+
   // Map watched-topic labels back to their IDs for storage. The LLM returns
   // labels (since labels are what we put in the prompt), but we want the
   // database to reference IDs.
@@ -149,28 +158,59 @@ export async function refreshIdeas(
     labelToId.set(t.label.toLowerCase(), t.watched_topic_id);
   }
 
+  let droppedNoFields = 0;
+  let droppedNoRationale = 0;
+  let droppedWrongType = 0;
+
   const inserted: InspirationIdea[] = [];
   for (const raw of rawIdeas) {
-    if (!raw.title || !raw.suggested_angle || !raw.why_this) continue;
+    if (!raw.title || !raw.suggested_angle || !raw.why_this) {
+      droppedNoFields++;
+      continue;
+    }
 
-    const sourceType: IdeaSourceType = ALLOWED_SOURCE_TYPES.has(
+    let sourceType: IdeaSourceType = ALLOWED_SOURCE_TYPES.has(
       raw.source_type as IdeaSourceType,
     )
       ? (raw.source_type as IdeaSourceType)
       : "adjacent_theme";
 
-    // Reject timely ideas without a user-specific rationale. Per spec.
-    const timelinessRationale = (raw.timeliness_rationale ?? "").trim();
-    if (sourceType === "timely" && timelinessRationale.length < 10) {
-      console.warn(
-        `[inspire] dropping timely idea "${raw.title}" — no timeliness_rationale provided`,
-      );
-      continue;
+    // When the user picked a specific source filter, force the source_type to
+    // match it. This protects us from the model occasionally ignoring the
+    // "ALL ideas should have source_type X" instruction.
+    if (ideaSource !== "all") {
+      const expectedType = mapIdeaSourceToType(ideaSource);
+      if (expectedType && sourceType !== expectedType) {
+        droppedWrongType++;
+        sourceType = expectedType;
+      }
     }
 
+    // Watched topic linkage (label → id) is the same regardless of source.
     const watchedTopicIds = (raw.watched_topic_ids ?? [])
       .map((label) => labelToId.get(String(label).toLowerCase()))
       .filter((id): id is string => Boolean(id));
+
+    // Resolve the timeliness rationale. Per spec, timely ideas MUST have a
+    // user-specific rationale. We try the explicit field first, then fall
+    // back to a substantive why_this, then drop the idea if we still have
+    // nothing meaningful.
+    let timelinessRationale = (raw.timeliness_rationale ?? "").trim();
+    if (sourceType === "timely") {
+      if (timelinessRationale.length < 10 && (raw.why_this ?? "").trim().length >= 30) {
+        timelinessRationale = (raw.why_this ?? "").trim();
+        console.warn(
+          `[inspire] timely idea "${raw.title}" had no explicit rationale, falling back to why_this`,
+        );
+      }
+      if (timelinessRationale.length < 10) {
+        droppedNoRationale++;
+        console.warn(
+          `[inspire] dropping timely idea "${raw.title}" — no timeliness_rationale and why_this too short`,
+        );
+        continue;
+      }
+    }
 
     const result = await pool.query<{
       idea_id: string;
@@ -208,7 +248,27 @@ export async function refreshIdeas(
       created_at: result.rows[0]!.created_at,
     });
   }
+
+  console.log(
+    `[inspire] inserted=${inserted.length} dropped(no_fields=${droppedNoFields}, no_rationale=${droppedNoRationale}, type_corrected=${droppedWrongType})`,
+  );
+
   return inserted;
+}
+
+function mapIdeaSourceToType(source: IdeaSource): IdeaSourceType | null {
+  switch (source) {
+    case "proven":
+      return "performance_pattern";
+    case "adjacent":
+      return "adjacent_theme";
+    case "timely":
+      return "timely";
+    case "stretch":
+      return "voice_gap";
+    default:
+      return null;
+  }
 }
 
 export async function setIdeaStatus(

@@ -406,7 +406,16 @@ export function buildInspirePrompt(args: {
       case "adjacent":
         return "ALL ideas should have source_type 'adjacent_theme'. Take what has worked for the user and stretch into a new angle, audience pain point, story, or strategic tension.";
       case "timely":
-        return `ALL ideas should have source_type 'timely'. Each timely idea MUST connect to at least one of: an active Topic to Watch above, the user's topic authorities, a high-performing prior post, the user's stated LinkedIn goal, OR a credible voice-stretch opportunity. NEVER suggest a timely idea simply because something is trending. Every timely idea MUST include a non-empty timeliness_rationale field that names the specific connection (which watched topic, which prior post, or which goal). If you cannot find a defensible connection for any timely idea, return fewer ideas rather than padding with weak ones.`;
+        return `ALL ideas MUST have source_type 'timely'. Each timely idea MUST connect to at least one of: an active Topic to Watch above, the user's topic authorities, a high-performing prior post, the user's stated LinkedIn goal, OR a credible voice-stretch opportunity. NEVER suggest a timely idea simply because something is trending.
+
+EVERY timely idea MUST include a non-empty timeliness_rationale field. The rationale should be 2 to 3 sentences and explicitly name:
+  (a) what's happening in the world or in this user's lane right now, AND
+  (b) the specific user-side hook (which watched topic, which prior post traits, which goal, or which voice trait).
+
+Example of a strong timeliness_rationale (do not copy verbatim, this is just the shape):
+"AI layoffs are dominating leadership conversation this week. Your posts about leading through ambiguity (especially the March hiring post) get the strongest comment volume, and 'Leadership communication during uncertainty' is one of your high-priority watched topics. This is a credible angle for you, not a hot take you'd regret."
+
+If you cannot write a defensible 2-3 sentence rationale that connects a real watched topic / prior post / goal to a real current moment, DO NOT include that idea. Return 3 strong timely ideas rather than 6 weak ones. An empty timeliness_rationale will cause the idea to be dropped by the application.`;
       case "stretch":
         return "ALL ideas should have source_type 'voice_gap'. Suggest ideas that intentionally expand the user's voice or content range while still staying credible and on-brand. Reference their voice profile.";
       case "all":
