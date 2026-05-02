@@ -686,20 +686,21 @@ function RecommendationCard({
         <p style={{ margin: "10px 0 4px", fontSize: 14 }}>{rec.what_to_change}</p>
       ) : null}
       <p style={{ margin: 0, fontSize: 13, color: "var(--text-on-light-muted)" }}>{rec.why_it_matters}</p>
+
+      {originalSnippet(rec) ? (
+        <Snippet
+          label={originalLabel(rec)}
+          body={originalSnippet(rec)!}
+          tone="muted"
+        />
+      ) : null}
+
       {rec.suggested_replacement_text ? (
-        <div
-          style={{
-            marginTop: 10,
-            background: "var(--color-off-white)",
-            borderLeft: "3px solid var(--color-pink)",
-            borderRadius: "var(--radius-sm)",
-            padding: "10px 14px",
-            whiteSpace: "pre-wrap",
-            fontSize: 14,
-          }}
-        >
-          {rec.suggested_replacement_text}
-        </div>
+        <Snippet
+          label={replacementLabel(rec)}
+          body={rec.suggested_replacement_text}
+          tone="accent"
+        />
       ) : null}
       {accepted && rec.apply_status === "appended_fallback" ? (
         <p
@@ -743,6 +744,97 @@ function RecommendationCard({
         >
           {rejected ? "Rejected" : "Reject"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+function originalSnippet(rec: Recommendation): string | null {
+  // Prefer the explicit anchor or target text the LLM returned. Fall back to
+  // legacy what_to_change if the model produced something usable there too.
+  if (rec.change_type === "insert_after" || rec.change_type === "insert_before") {
+    return rec.anchor_text?.trim() || null;
+  }
+  if (rec.change_type === "append") {
+    return null;
+  }
+  return rec.target_text?.trim() || null;
+}
+
+function originalLabel(rec: Recommendation): string {
+  switch (rec.change_type) {
+    case "replace":
+      return "Currently in your draft";
+    case "trim":
+      return "Will be removed from your draft";
+    case "insert_after":
+      return "Adding immediately after";
+    case "insert_before":
+      return "Adding immediately before";
+    default:
+      return "Currently in your draft";
+  }
+}
+
+function replacementLabel(rec: Recommendation): string {
+  switch (rec.change_type) {
+    case "replace":
+      return "Replace with";
+    case "insert_after":
+    case "insert_before":
+      return "Add this";
+    case "append":
+      return "Add at the end";
+    case "trim":
+      return "";
+    default:
+      return "Suggested text";
+  }
+}
+
+function Snippet({
+  label,
+  body,
+  tone,
+}: {
+  label: string;
+  body: string;
+  tone: "muted" | "accent";
+}) {
+  const accent = tone === "accent";
+  return (
+    <div style={{ marginTop: 10 }}>
+      {label ? (
+        <div
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: 10,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: accent ? "var(--color-pink)" : "var(--text-on-light-muted)",
+            fontWeight: 700,
+            marginBottom: 4,
+          }}
+        >
+          {label}
+        </div>
+      ) : null}
+      <div
+        style={{
+          background: accent ? "var(--color-off-white)" : "rgba(11, 16, 36, 0.04)",
+          borderLeft: accent
+            ? "3px solid var(--color-pink)"
+            : "3px solid var(--color-slate)",
+          borderRadius: "var(--radius-sm)",
+          padding: "10px 14px",
+          whiteSpace: "pre-wrap",
+          fontSize: 14,
+          lineHeight: 1.55,
+          color: "var(--text-on-light)",
+          fontStyle: accent ? "normal" : "italic",
+        }}
+      >
+        {body}
       </div>
     </div>
   );
