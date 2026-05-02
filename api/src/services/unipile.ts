@@ -135,32 +135,136 @@ export async function startHostedAuth(
   return { url: json.url };
 }
 
+/**
+ * Pull a user's LinkedIn post history from Unipile.
+ *
+ * Unipile's posts API has shifted shape across versions. We try the most
+ * current path first (`/api/v1/users/me/posts?account_id=...`), then fall
+ * back to the older flat path (`/api/v1/posts?account_id=...`). We log each
+ * attempt verbosely so when an integration breaks we can see which
+ * endpoint succeeded, what HTTP status came back, and what fields the
+ * response actually contained.
+ *
+ * Field mapping is permissive: we accept several common aliases for post
+ * content, posted-at timestamp, and engagement metrics so a Unipile API
+ * change does not silently produce empty rows.
+ */
+
+const ENDPOINTS = [
+  // Preferred: scoped under the connected user.
+  (dsn: string, accountId: string) =>
+    `https://${dsn}/api/v1/users/me/posts?account_id=${encodeURIComponent(accountId)}&limit=100`,
+  // Legacy flat endpoint that older Unipile API versions exposed.
+  (dsn: string, accountId: string) =>
+    `https://${dsn}/api/v1/posts?account_id=${encodeURIComponent(accountId)}&limit=100`,
+];
+
 export async function fetchPostHistory(unipileAccountId: string): Promise<UnipilePost[]> {
   if (!isUnipileConfigured()) {
+    console.log("[unipile] fetchPostHistory: not configured, returning demo posts");
     return DEMO_POSTS;
   }
-  const res = await fetch(
-    `https://${config.unipile.dsn}/api/v1/posts?account_id=${encodeURIComponent(unipileAccountId)}&limit=100`,
-    {
-      headers: {
-        "X-API-KEY": config.unipile.apiKey,
-      },
-    },
-  );
-  if (!res.ok) {
-    throw new Error(`Unipile post fetch failed: ${res.status} ${await res.text()}`);
+
+  let lastError: string | null = null;
+
+  for (const buildUrl of ENDPOINTS) {
+    const url = buildUrl(config.unipile.dsn, unipileAccountId);
+    console.log("[unipile] fetchPostHistory GET", url);
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        headers: {
+          "X-API-KEY": config.unipile.apiKey,
+          Accept: "application/json",
+        },
+      });
+    } catch (err) {
+      lastError = `network: ${(err as Error).message}`;
+      console.error("[unipile] fetch threw:", lastError);
+      continue;
+    }
+
+    const bodyText = await res.text();
+
+    if (!res.ok) {
+      lastError = `${res.status} ${bodyText.slice(0, 400)}`;
+      console.warn(`[unipile] ${url} -> ${res.status}`, bodyText.slice(0, 400));
+      continue;
+    }
+
+    let json: { items?: unknown[]; data?: unknown[]; results?: unknown[] };
+    try {
+      json = JSON.parse(bodyText);
+    } catch {
+      console.error("[unipile] response was not valid JSON:", bodyText.slice(0, 400));
+      lastError = "invalid_json";
+      continue;
+    }
+
+    const items = (json.items ?? json.data ?? json.results ?? []) as Array<Record<string, unknown>>;
+    console.log(
+      `[unipile] ${url} returned ${items.length} item(s). Top-level keys: ${Object.keys(json).join(", ") || "(none)"}`,
+    );
+    if (items.length > 0) {
+      console.log(
+        "[unipile] sample item keys:",
+        Object.keys(items[0] ?? {}).join(", "),
+      );
+    }
+
+    return items.map(mapUnipilePost);
   }
-  const json = (await res.json()) as { items?: Array<Record<string, unknown>> };
-  return (json.items ?? []).map((item) => ({
-    external_id: String(item.id ?? item.post_id ?? ""),
-    content: String(item.text ?? item.content ?? ""),
-    posted_at: String(item.posted_at ?? item.published_at ?? new Date().toISOString()),
+
+  throw new Error(`Unipile post fetch failed: ${lastError ?? "no endpoints succeeded"}`);
+}
+
+function mapUnipilePost(item: Record<string, unknown>): UnipilePost {
+  const metricsBag =
+    pickRecord(item, ["metrics", "engagement", "stats", "analytics"]) ?? {};
+
+  return {
+    external_id: String(
+      pickFirst(item, ["id", "post_id", "social_id", "provider_id", "share_id"]) ?? "",
+    ),
+    content: String(
+      pickFirst(item, ["text", "content", "share_text", "body", "commentary"]) ?? "",
+    ),
+    posted_at: String(
+      pickFirst(item, ["posted_at", "published_at", "created_at", "date", "post_date"]) ??
+        new Date().toISOString(),
+    ),
     metrics: {
-      impressions: Number((item.metrics as Record<string, unknown> | undefined)?.impressions ?? 0),
-      likes: Number((item.metrics as Record<string, unknown> | undefined)?.likes ?? 0),
-      comments: Number((item.metrics as Record<string, unknown> | undefined)?.comments ?? 0),
-      shares: Number((item.metrics as Record<string, unknown> | undefined)?.shares ?? 0),
-      clicks: Number((item.metrics as Record<string, unknown> | undefined)?.clicks ?? 0),
+      impressions: Number(
+        pickFirst(metricsBag, ["impressions", "impression_count", "views"]) ?? 0,
+      ),
+      likes: Number(
+        pickFirst(metricsBag, ["likes", "like_count", "reactions", "reaction_count"]) ?? 0,
+      ),
+      comments: Number(pickFirst(metricsBag, ["comments", "comment_count"]) ?? 0),
+      shares: Number(
+        pickFirst(metricsBag, ["shares", "share_count", "reposts", "repost_count"]) ?? 0,
+      ),
+      clicks: Number(pickFirst(metricsBag, ["clicks", "click_count"]) ?? 0),
     },
-  }));
+  };
+}
+
+function pickFirst(obj: Record<string, unknown>, keys: string[]): unknown {
+  for (const k of keys) {
+    if (obj[k] !== undefined && obj[k] !== null && obj[k] !== "") return obj[k];
+  }
+  return undefined;
+}
+
+function pickRecord(
+  obj: Record<string, unknown>,
+  keys: string[],
+): Record<string, unknown> | null {
+  for (const k of keys) {
+    const v = obj[k];
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      return v as Record<string, unknown>;
+    }
+  }
+  return null;
 }
