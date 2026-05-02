@@ -134,7 +134,7 @@ export async function refreshIdeas(
     model: config.anthropic.generationModel,
     system,
     messages: [{ role: "user", content: userPrompt }],
-    max_tokens: 2200,
+    max_tokens: 3500,
     temperature: 0.85,
   });
 
@@ -142,12 +142,20 @@ export async function refreshIdeas(
   const rawIdeas = parsed?.ideas ?? [];
 
   console.log(
-    `[inspire] idea_source=${ideaSource} watched_topics=${watchedTopics.length} llm returned ${rawIdeas.length} idea(s)`,
+    `[inspire] idea_source=${ideaSource} watched_topics=${watchedTopics.length} llm returned ${rawIdeas.length} idea(s) response_length=${response.text.length} stop_reason=${response.stop_reason ?? "?"}`,
   );
   if (rawIdeas.length === 0) {
-    console.warn(
-      `[inspire] LLM returned no ideas. First 400 chars of response: ${response.text.slice(0, 400)}`,
-    );
+    // Escape newlines so the log line stays single-line and we can see what
+    // the model actually returned (markdown fences, refusal text, etc).
+    const safe = response.text.slice(0, 800).replace(/\n/g, "\\n");
+    console.warn(`[inspire] LLM returned no ideas. First 800 chars (escaped): ${safe}`);
+    if (parsed === null) {
+      console.warn(`[inspire] parseLooseJson returned null — likely malformed JSON from LLM`);
+    } else {
+      console.warn(
+        `[inspire] parseLooseJson returned: ${JSON.stringify(parsed).slice(0, 400)}`,
+      );
+    }
   }
 
   // Map watched-topic labels back to their IDs for storage. The LLM returns

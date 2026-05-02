@@ -442,7 +442,9 @@ CRITICAL RULES:
 ${dismissedNote}
 ${savedNote}
 
-Return JSON ONLY, matching exactly this schema:
+OUTPUT FORMAT: Return raw JSON ONLY. Do NOT wrap the response in markdown code fences (no \`\`\`json, no \`\`\`). Do NOT prefix with explanatory prose. The first character of your response must be the opening brace { of the JSON object.
+
+Schema:
 
 {
   "ideas": [

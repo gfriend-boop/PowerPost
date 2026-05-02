@@ -45,10 +45,15 @@ export function detectBannedPhrases(text: string): string[] {
  * code fence. This is tolerant about both.
  */
 export function parseLooseJson<T = unknown>(raw: string): T | null {
-  const trimmed = raw.trim();
-  // Strip markdown code fences if present.
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  const candidate = fenced ? fenced[1] : trimmed;
+  let candidate = raw.trim();
+
+  // Strip a leading markdown code fence opener if present, even when there's
+  // no matching close. (LLMs sometimes return ``` json\n{...} without
+  // closing the fence, especially when the response is long.)
+  candidate = candidate.replace(/^```(?:json|JSON)?\s*\n?/, "");
+  // Strip a trailing fence if present.
+  candidate = candidate.replace(/\n?```\s*$/, "");
+  candidate = candidate.trim();
   if (!candidate) return null;
 
   // Find the outermost JSON object braces.
