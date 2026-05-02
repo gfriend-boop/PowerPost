@@ -1,8 +1,10 @@
-type LogoVariant = "primary" | "square" | "text";
+type LogoVariant = "primary" | "square" | "square-light" | "text";
 
 const SOURCES: Record<LogoVariant, string> = {
   primary: "/logos/psa-primary.svg",
   square: "/logos/psa-square.svg",
+  // Use on dark / saturated backgrounds (deep navy, royal blue, pink).
+  "square-light": "/logos/psa-square-light.svg",
   text: "/logos/psa-text.svg",
 };
 

@@ -5,6 +5,7 @@ import { errorHandler, notFound } from "./middleware/error.js";
 import authRoutes from "./routes/auth.js";
 import contentRoutes from "./routes/content.js";
 import linkedinRoutes from "./routes/linkedin.js";
+import phase2Routes from "./routes/phase2.js";
 import voiceProfileRoutes from "./routes/voice-profile.js";
 import webhookRoutes from "./routes/webhooks.js";
 import workshopRoutes from "./routes/workshop.js";
@@ -33,6 +34,7 @@ app.use("/linkedin", linkedinRoutes);
 app.use("/content", contentRoutes);
 app.use("/workshop", workshopRoutes);
 app.use("/webhooks", webhookRoutes);
+app.use(phase2Routes);
 
 app.use(notFound);
 app.use(errorHandler);

@@ -196,45 +196,69 @@ export function Onboarding() {
       <PageBg>
         <CoachBubble>
           <h2 style={{ marginTop: 0 }}>Welcome, {user?.name?.split(" ")[0] ?? "there"}.</h2>
-          <p>
+          <p style={{ marginBottom: 0 }}>
             First step. Connect your LinkedIn so I can read your past posts and learn what is
             already landing for you. We use Unipile, so I never see your password and you can
             disconnect any time.
           </p>
-          <p className="muted" style={{ fontSize: 14, marginBottom: 0 }}>
-            No Unipile credentials configured? You will be connected in demo mode with a set
-            of sample posts so we can keep going.
-          </p>
         </CoachBubble>
         <Center>
-          <button
-            className="btn btn-primary"
-            onClick={async () => {
-              setSubmitting(true);
-              setSubmitError(null);
-              try {
-                const res = await api.post<{ hosted_auth_url: string; demo_mode: boolean }>(
-                  "/linkedin/connect",
-                );
-                console.log("LinkedIn connect response:", res);
-                if (res.demo_mode) {
-                  await refresh();
-                  setPhase("questionnaire");
-                } else {
-                  setPhase("linkedin_pending");
-                  window.location.href = res.hosted_auth_url;
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+            <button
+              className="btn btn-primary"
+              onClick={async () => {
+                setSubmitting(true);
+                setSubmitError(null);
+                try {
+                  const res = await api.post<{ hosted_auth_url: string; demo_mode: boolean }>(
+                    "/linkedin/connect",
+                  );
+                  if (res.demo_mode) {
+                    await refresh();
+                    setPhase("questionnaire");
+                  } else {
+                    setPhase("linkedin_pending");
+                    window.location.href = res.hosted_auth_url;
+                  }
+                } catch (err) {
+                  if (err instanceof ApiError) setSubmitError(err.message);
+                  else setSubmitError("Could not start LinkedIn connection");
+                } finally {
+                  setSubmitting(false);
                 }
-              } catch (err) {
-                if (err instanceof ApiError) setSubmitError(err.message);
-                else setSubmitError("Could not start LinkedIn connection");
-              } finally {
-                setSubmitting(false);
-              }
-            }}
-            disabled={submitting}
+              }}
+              disabled={submitting}
+            >
+              {submitting ? "Connecting..." : "Connect LinkedIn"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={submitting}
+              onClick={() => {
+                try {
+                  sessionStorage.setItem("powerpost_linkedin_skipped", "1");
+                } catch {
+                  // ignore
+                }
+                setPhase("questionnaire");
+              }}
+              style={{
+                color: "var(--color-white)",
+                borderColor: "rgba(255,255,255,0.3)",
+                background: "transparent",
+              }}
+            >
+              Skip for now
+            </button>
+          </div>
+          <p
+            className="muted-on-dark"
+            style={{ fontSize: 13, margin: "8px 0 0", textAlign: "center", maxWidth: 420 }}
           >
-            {submitting ? "Connecting..." : "Connect LinkedIn"}
-          </button>
+            You can connect LinkedIn anytime from your dashboard. Skipping just means PowerPost
+            works from your voice profile alone for now.
+          </p>
           {submitError ? <ErrorText message={submitError} /> : null}
         </Center>
       </PageBg>
@@ -642,12 +666,13 @@ function StepContent({
                     padding: "10px 16px",
                     borderRadius: "var(--radius-pill)",
                     border: active ? "2px solid var(--color-pink)" : "1.5px solid var(--border-soft)",
-                    background: active ? "rgba(255, 46, 204, 0.08)" : "var(--color-white)",
-                    color: "var(--text-on-light)",
+                    background: active ? "var(--color-navy)" : "var(--color-white)",
+                    color: active ? "var(--color-white)" : "var(--text-on-light)",
                     fontFamily: "var(--font-display)",
                     fontWeight: 600,
                     fontSize: 14,
                     cursor: "pointer",
+                    transition: "background 0.15s ease, color 0.15s ease, border-color 0.15s ease",
                   }}
                 >
                   {t.label}
@@ -812,15 +837,18 @@ function SnippetPicker({
               textAlign: "left",
               padding: "20px 22px",
               borderRadius: "var(--radius-lg)",
-              background: active ? "rgba(255, 46, 204, 0.06)" : "var(--color-white)",
+              background: active ? "var(--color-navy)" : "var(--color-white)",
               border: active ? "2px solid var(--color-pink)" : "1.5px solid var(--border-soft)",
-              boxShadow: active ? "0 18px 32px -22px rgba(255,46,204,0.45)" : "var(--shadow-card)",
+              boxShadow: active
+                ? "0 22px 44px -22px rgba(11,16,36,0.55)"
+                : "var(--shadow-card)",
               cursor: "pointer",
               fontFamily: "inherit",
               fontSize: 15.5,
               lineHeight: 1.55,
-              color: "var(--text-on-light)",
+              color: active ? "var(--color-white)" : "var(--text-on-light)",
               width: "100%",
+              transition: "background 0.15s ease, color 0.15s ease, border-color 0.15s ease",
             }}
           >
             <span
@@ -870,8 +898,10 @@ function RadioList({
               padding: "14px 18px",
               borderRadius: "var(--radius-md)",
               border: active ? "2px solid var(--color-pink)" : "1.5px solid var(--border-soft)",
-              background: active ? "rgba(255, 46, 204, 0.06)" : "var(--color-white)",
+              background: active ? "var(--color-navy)" : "var(--color-white)",
+              color: active ? "var(--color-white)" : "var(--text-on-light)",
               cursor: "pointer",
+              transition: "background 0.15s ease, color 0.15s ease, border-color 0.15s ease",
             }}
           >
             <input

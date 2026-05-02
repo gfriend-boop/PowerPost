@@ -170,3 +170,83 @@ Stored in `api/seeds/topics.json`. The "add your own" input is supported in the 
 **Why:** Confirmed by PM as M1 scope.
 
 **Revisit:** When you pick a target (Render / Fly / Railway / AWS), add a production Dockerfile (multi-stage build for the web; copy `dist` into the api container), a Github Actions workflow, and managed Postgres with daily backups.
+
+---
+
+# Phase 2 Decisions
+
+## Phase 2 Prompt Architecture
+
+**Choice:** A single `services/llm/phase2-prompts.ts` module owns the shared system prompt and all task-specific user prompts (score / improve / inspire / optimize / extract-prefs). Every Phase 2 LLM call goes through `loadPromptContext(userId)` which assembles voice profile + active learned preferences + suggested learned preferences + KPI-relevant top posts + most recent posts.
+
+**Why:** The Prompt System Spec required centralised guardrails. Keeping all prompts in one file makes it cheap to add a banned phrase, change tone, or include another contextual signal across every Phase 2 feature.
+
+**Output schemas:** Each task asks for strict JSON. We tolerate code fences and prose-wrapped JSON via `parseLooseJson()` in `validators.ts` so a slightly-off response doesn't blow up the request.
+
+## Trends API
+
+**Choice:** Phase 2 ships **without** an external trends source. Inspiration uses (1) the user's own top-performing posts, (2) topic authorities from onboarding, (3) explicit "voice gap" prompting (topics the user said matter but their post history under-represents), and (4) "adjacent theme" prompting (variations on what already worked).
+
+**Why:** PRD non-goals exclude growth hacking and the spec doesn't name a specific trends source. Adding one is straightforward later — extend the Inspire prompt with a TRENDS section before the existing context blocks.
+
+**Revisit:** If product wants weekly market signals, integrate a curated topic feed (Brave Trends, Latent Sync, or a manual editorial seed table) and pass it into `buildInspirePrompt`.
+
+## Scoring Cache
+
+**Choice:** `post_scores` is keyed by `(user_id, draft_text_hash, selected_kpi)` with `draft_text_hash = sha256(normalised_text)`. Re-scoring the same draft with the same KPI returns the cached row.
+
+**Why:** The Prompt System Spec calls out caching to keep score generation under 5s. Hashing the normalised text means whitespace-only edits don't bust the cache.
+
+**Revisit:** Cache invalidation today is implicit — once learned preferences change, scores don't auto-refresh. Add a per-user version stamp on the voice_profiles row that the cache key includes when this becomes a problem.
+
+## Learned Preference Extraction
+
+**Choice:** Synchronous via `setImmediate` after a feedback event. Triggered when:
+- the event has a user note, OR
+- ≥ 3 actionable events (manual_edit / suggestion_rejected / suggestion_accepted / draft_finalized / optimization_requested / thumbs_down) have accumulated since the last extraction.
+
+The extractor runs the LLM with the spec's "Extract Learned Preferences" prompt, takes only outputs with confidence ≥ 0.4, and writes them as `suggested` (or `active` if confidence ≥ 0.85 AND the LLM nominated active). Existing rows are upserted via the `(user_id, preference_type)` partial unique index.
+
+**Why:** The Data Contract said extraction should run async and not block the user flow. We don't have a worker process, so `setImmediate` was the simplest correct path. The threshold + confidence gate keep us from over-suggesting.
+
+**Revisit:** Move to a real worker (BullMQ + Redis) when the user count exceeds a few thousand. Add a periodic batch job that re-evaluates preferences after a user has been quiet for a week.
+
+## Workshop draft scoring
+
+**Choice:** Every Workshop assistant turn that produces a draft is scored automatically. The score lives in the `workshop_messages.metadata.score` field and is shown inline in the chat UI.
+
+**Why:** Phase 2 PRD requires scores for "generated drafts, pasted drafts, Workshop outputs, and improved drafts." Inline scoring also feeds the alignment widget without requiring the user to take an extra action.
+
+**Cost note:** This adds one extra LLM call per Workshop draft turn. Mitigated by the cached `post_scores` lookup — re-rendering the conversation does not re-score.
+
+## Recalibration Workflow
+
+**Choice:** `POST /analytics/recalibration/start` returns `{ ok: true, redirect: "/onboarding?retake=1" }`. The dashboard alignment widget shows a "Recalibrate voice" button that links straight to `/voice/edit`. The "Retake questionnaire" button on `/voice/edit` is the actual recalibration path.
+
+**Why:** PRD describes recalibration as "based on data, not user guesstimate". Today the recalibration is effectively the same as the existing retake flow with the alignment widget's recommendation as guidance. A more sophisticated recalibration (auto-suggest new tone modifier values from observed scores) is a Phase 2B candidate.
+
+## Onboarding answers as feedback signal
+
+**Choice:** When a user confirms or rejects a learned preference in `/voice/edit`, we **also** write a corresponding `learned_preference_confirmed` / `learned_preference_rejected` feedback event. This prevents the extractor from re-suggesting the same preference next cycle.
+
+**Why:** The Data Contract event_type list explicitly includes those two events. Writing them via the same API path keeps the audit trail consistent.
+
+## Banned phrase enforcement
+
+**Choice:** The validator runs `detectBannedPhrases()` over generated text. If any of the spec's banned phrases ("boost engagement", "level up", etc.) appear, a `banned_phrase` validation flag surfaces in response metadata. We do **not** auto-strip or auto-rewrite banned phrases — the model is instructed not to use them, and if it does we surface the flag rather than masking the failure.
+
+**Why:** Auto-rewrite for banned phrases is fragile (replacing "boost engagement" with what?). Better to surface the failure and rely on the prompt-level instruction to prevent it.
+
+**Revisit:** When/if banned-phrase rate is non-trivial in production, add a one-shot LLM repair pass.
+
+## Items NOT built
+
+These are explicit Phase 2 scope decisions to defer (per Build Prompt deferrals or because they sit outside the M1+M2 brief):
+
+- Long-form article workshop mode
+- PSA coach admin portal / coach drift dashboard
+- Multi-platform publishing
+- Auto-DM / outreach
+- Global model fine-tuning
+- Billing plan enforcement for Phase 2 features
+- Background workers for async preference extraction (we use `setImmediate` instead)

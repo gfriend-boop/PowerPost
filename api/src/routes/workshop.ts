@@ -11,6 +11,7 @@ import {
   loadVoiceProfileForPrompt,
 } from "../services/llm/prompts.js";
 import { remediate, validate } from "../services/llm/validators.js";
+import { scoreDraft } from "../services/phase2/scoring.js";
 import { HttpError, asyncHandler } from "../utils/http.js";
 
 const router = Router();
@@ -187,6 +188,14 @@ type WorkshopReply = {
   draft: string | null;
   validation_flags: ReturnType<typeof validate>["flags"];
   history_used: boolean;
+  score: {
+    voice_score: number;
+    performance_score: number;
+    voice_rationale: string;
+    performance_rationale: string;
+    tradeoff_summary: string | null;
+    confidence: "low" | "medium" | "high";
+  } | null;
 };
 
 async function runWorkshopTurn(userId: string, workshopId: string): Promise<WorkshopReply> {
@@ -223,10 +232,31 @@ async function runWorkshopTurn(userId: string, workshopId: string): Promise<Work
     flags = remediated.flags;
   }
 
+  let score: WorkshopReply["score"] = null;
+  if (cleanedDraft) {
+    try {
+      const scored = await scoreDraft({
+        userId,
+        draft: cleanedDraft,
+      });
+      score = {
+        voice_score: scored.voice_score,
+        performance_score: scored.performance_score,
+        voice_rationale: scored.voice_rationale,
+        performance_rationale: scored.performance_rationale,
+        tradeoff_summary: scored.tradeoff_summary,
+        confidence: scored.confidence,
+      };
+    } catch (err) {
+      console.warn("[workshop] score failed:", err);
+    }
+  }
+
   const metadata = {
     stance: parsed.stance,
     history_used: hasHistory,
     validation_flags: flags,
+    score,
   };
   const stored = await pool.query<{ message_id: string }>(
     `INSERT INTO workshop_messages (workshop_id, role, content, metadata)
@@ -247,6 +277,7 @@ async function runWorkshopTurn(userId: string, workshopId: string): Promise<Work
     draft: cleanedDraft,
     validation_flags: flags,
     history_used: hasHistory,
+    score,
   };
 }
 

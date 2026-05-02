@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ApiError, api } from "../api/client";
+import { LearnedPreferences } from "../components/LearnedPreferences";
 
 type Profile = {
   archetype: string;
@@ -556,12 +557,13 @@ export function EditVoice() {
                     padding: "10px 16px",
                     borderRadius: "var(--radius-pill)",
                     border: active ? "2px solid var(--color-pink)" : "1.5px solid var(--border-soft)",
-                    background: active ? "rgba(255, 46, 204, 0.08)" : "var(--color-white)",
-                    color: "var(--text-on-light)",
+                    background: active ? "var(--color-navy)" : "var(--color-white)",
+                    color: active ? "var(--color-white)" : "var(--text-on-light)",
                     fontFamily: "var(--font-display)",
                     fontWeight: 600,
                     fontSize: 14,
                     cursor: "pointer",
+                    transition: "background 0.15s ease, color 0.15s ease",
                   }}
                 >
                   {t.label}
@@ -698,6 +700,17 @@ export function EditVoice() {
             onChange={(e) => set({ never_be_mistaken_for: e.target.value })}
           />
         </Section>
+
+        <section className="card stack-3" style={{ marginTop: 32 }}>
+          <div>
+            <h2 style={{ margin: 0 }}>Learned preferences</h2>
+            <p className="muted" style={{ margin: "4px 0 0", fontSize: 14 }}>
+              Patterns PowerPost has noticed from your feedback. Confirm the ones that feel right.
+              Reject the ones that don't.
+            </p>
+          </div>
+          <LearnedPreferences />
+        </section>
 
         <div className="card stack-3" style={{ marginTop: 32 }}>
           <h3 style={{ margin: 0 }}>Start over</h3>
@@ -889,14 +902,15 @@ function SnippetPicker({
               textAlign: "left",
               padding: "16px 18px",
               borderRadius: "var(--radius-md)",
-              background: active ? "rgba(255, 46, 204, 0.06)" : "var(--color-white)",
+              background: active ? "var(--color-navy)" : "var(--color-white)",
               border: active ? "2px solid var(--color-pink)" : "1.5px solid var(--border-soft)",
               cursor: "pointer",
               fontFamily: "inherit",
               fontSize: 15,
               lineHeight: 1.55,
-              color: "var(--text-on-light)",
+              color: active ? "var(--color-white)" : "var(--text-on-light)",
               width: "100%",
+              transition: "background 0.15s ease, color 0.15s ease",
             }}
           >
             <span
@@ -946,8 +960,10 @@ function RadioList({
               padding: "12px 16px",
               borderRadius: "var(--radius-md)",
               border: active ? "2px solid var(--color-pink)" : "1.5px solid var(--border-soft)",
-              background: active ? "rgba(255, 46, 204, 0.06)" : "var(--color-white)",
+              background: active ? "var(--color-navy)" : "var(--color-white)",
+              color: active ? "var(--color-white)" : "var(--text-on-light)",
               cursor: "pointer",
+              transition: "background 0.15s ease, color 0.15s ease",
             }}
           >
             <input

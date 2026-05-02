@@ -113,9 +113,16 @@ const HARD_CONTENT_RULES = `HARD CONTENT RULES (these are non-negotiable and ove
 
 1. NEVER use em-dashes (—) or en-dashes (–). Not in any draft. Not for clause separation. Not for stylistic flair. Use periods, commas, or rewrite the sentence. Em-dashes are how AI-generated content reveals itself and PowerPost is built on the opposite of that.
 
-2. NEVER write broetry. Every paragraph must contain at least two complete, connected sentences. Single-sentence paragraphs stacked one after another are forbidden. If a thought feels like it wants its own line, find the next thought that connects to it and write them as one paragraph.
+2. NEVER write broetry. Single-sentence stacked lines are forbidden. Every paragraph must contain at least two complete, connected sentences that belong together. If a thought feels like it wants its own line, find the next thought that connects to it and write them as one paragraph.
 
-3. Warm but never saccharine. Direct but never cold. Specific over abstract. Real over performative.`;
+3. PARAGRAPH FORMATTING (critical for LinkedIn readability):
+   - Separate distinct ideas with a single BLANK LINE between paragraphs.
+   - Each paragraph should be 2 to 4 sentences. Never one. Rarely more than four.
+   - A short post is typically 3 to 5 paragraphs. A longer post is 5 to 7.
+   - Do NOT use single newlines inside a paragraph. Inside a paragraph, sentences are separated by spaces only.
+   - The output must be ready to copy directly into LinkedIn with paragraph breaks intact.
+
+4. Warm but never saccharine. Direct but never cold. Specific over abstract. Real over performative.`;
 
 export function buildSystemPrompt(profile: VoiceProfileForPrompt): string {
   const sliders = `Tone calibration (1 to 10 scales):

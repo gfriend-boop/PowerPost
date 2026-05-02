@@ -1,13 +1,20 @@
-# PowerPost — Milestone 1 (Early Access MVP)
+# PowerPost
 
-PowerPost by PowerSpeak Academy. A LinkedIn voice tool for executives, founders, and emerging leaders. M1 ships:
+PowerPost by PowerSpeak Academy. A LinkedIn voice tool for executives, founders, and emerging leaders. The repo holds the full Phase 1 + Phase 2 codebase:
 
 - Email signup + login with JWT (15-min access + 30-day refresh)
 - LinkedIn connection via Unipile hosted auth, with a demo-mode fallback that seeds realistic sample posts when Unipile credentials are not configured
 - Conversational onboarding questionnaire (12 steps + reveal + customization)
 - Six-archetype voice profile assignment with deterministic scoring + an "alternative archetype" surface for ambiguous signals
 - "Workshop a Post" — a true back-and-forth chat experience with PowerPost as a thinking partner. The model chooses one of three stances per turn (clarify, draft, refine) and is hard-constrained to PowerSpeak's content rules
-- Hard content rules enforced in both prompts AND post-generation validation: no em-dashes, no broetry. Drafts that violate either are auto-remediated and the validation flags surfaced in response metadata
+- Hard content rules enforced in both prompts AND post-generation validation: no em-dashes, no broetry, no banned generic phrases. Drafts that violate any are auto-remediated and the validation flags surfaced in response metadata
+
+**Phase 2 adds:**
+- **Get Inspired** — personalised idea feed sourced from the user's actual top posts + adjacent themes + voice gaps. Each idea has a "why this" rationale and launches Workshop with a seeded prompt
+- **Improve My Draft** — paste a draft, pick a KPI, get voice-aligned and performance-aligned recommendation paths with explicit tradeoff calls. Accept/reject individually or per path, then optimise (voice, performance, balanced) and finalise
+- **Voice + Performance Scoring** — every Workshop draft and every Improve session gets dual 1–10 scores with rationales, evidence post references, and confidence
+- **Feedback capture + Learned preferences** — explicit (thumbs / notes) and implicit (accepted/rejected suggestions, finalisations, optimisations) feedback flows into a learned-preferences extractor that proposes user-confirmable patterns. Confirmed preferences inject into every future LLM prompt
+- **Alignment Widget** on the dashboard — voice and performance trends, drift detection, and a single recommended action grounded in the user's recent scores
 
 Stack: React + Vite (web) · Node.js + Express (api) · Postgres 16 · Anthropic Claude (LLM) · Unipile (LinkedIn).
 
@@ -150,7 +157,58 @@ Tie-break: prefer the archetype whose hook (Pick #1) was selected.
 
 When the second-place archetype is within 15% of the leader, it is surfaced on the reveal screen as "You also show strong signals of …".
 
-## API surface (M1)
+## Phase 2 walk-throughs
+
+**Get Inspired**
+1. Sign in → dashboard → click the "Get inspired" card (or `/inspire`)
+2. First visit auto-generates 5–7 personalised ideas
+3. Each idea shows a source tag (What worked / Adjacent angle / Underplayed), an angle, and a "why this" rationale
+4. Use "Workshop this idea" to seed a Workshop session, "Save for later" to keep it, or "Not for me" to dismiss
+
+**Improve My Draft**
+1. Dashboard → "Improve my draft" card (or `/improve`)
+2. Paste a draft, pick a KPI, click Analyze
+3. See voice + performance scores with rationales and a tradeoff summary
+4. Voice-aligned and performance-aligned paths each contain individual recommendations — Accept / Reject / Accept all in this path
+5. Optimise the working draft (voice / performance / balanced) → see what changed → Finalise
+
+**Workshop**
+- Every Workshop draft now includes a small voice/performance score badge plus optional thumbs / not-quite controls
+- "Not quite" lets the user write a free-form note that feeds the learned-preferences extractor
+
+**Learned preferences**
+- Visit `/voice/edit`. The new "Learned preferences" section shows suggested patterns (e.g. "User tends to replace direct CTAs with reflective questions") with Confirm / Reject. Confirmed preferences are injected into every future LLM prompt.
+
+**Alignment widget**
+- The dashboard right rail shows the widget once two or more drafts have been scored (Workshop generates scores automatically). The widget lights up its border when drift is detected and recommends the next move.
+
+## Phase 2 API surface
+
+```
+POST   /content/score
+POST   /content/optimize
+
+POST   /content/improve
+GET    /content/improve/:id
+PATCH  /content/improve/:id/recommendation/:recId
+POST   /content/improve/:id/accept-all
+POST   /content/improve/:id/finalize
+
+GET    /content/inspiration
+POST   /content/inspiration/refresh
+POST   /content/inspiration/:idea_id/save
+POST   /content/inspiration/:idea_id/dismiss
+POST   /content/inspiration/:idea_id/workshop
+
+POST   /feedback/events
+GET    /feedback/preferences
+PATCH  /feedback/preferences/:id
+
+GET    /analytics/alignment
+POST   /analytics/recalibration/start
+```
+
+## API surface (Phase 1)
 
 ```
 POST   /auth/signup
@@ -184,22 +242,68 @@ DELETE /content/drafts/:id
 
 Stripe / billing endpoints are out of M1 scope and not stubbed.
 
-## Known gaps for Phase 2 / launch
+## Known gaps and deferrals
 
 - Email verification, password reset, MFA, social login
 - Stripe / billing flow + trial expiration enforcement
-- Performance Intelligence dashboard (analytics endpoints)
-- Article generation (long-form)
+- Long-form article generation
 - Scheduling + direct publishing via Unipile
-- "Get Inspired" idea feed (Phase 2 critical per PRD)
-- "Improve My Draft" KPI optimizer (Phase 2 critical per PRD)
-- Voice refinement feedback loop (thumbs up/down → profile updates)
-- Cron-based daily LinkedIn sync (M1 has on-connect + manual sync only)
-- WOFF2 font conversion (M1 ships OTFs via `@font-face` — see DECISIONS.md)
+- Cron-based daily LinkedIn sync (we have on-connect + manual sync only)
+- Trends API for inspiration (Phase 2 currently uses user history + voice profile only)
+- WOFF2 font conversion (ships OTFs via `@font-face` — see DECISIONS.md)
 - Brand texture / pattern assets (placeholder gradient on onboarding splash)
-- Cloud deployment scripts (Render / Fly / Vercel) — M1 is Docker Compose only
-- Streaming responses for Workshop a Post (currently single-shot per turn)
+- Cloud deployment scripts (Render / Fly / Vercel) — Docker Compose only today
+- Streaming responses for Workshop a Post (single-shot per turn)
 - Accessibility audit beyond keyboard nav and contrast tokens
+- PSA coach admin portal
+- Background worker for learned-preference extraction (today it runs in-process via `setImmediate` after feedback events that pass the threshold)
+
+## Phase 2 test instructions
+
+Pre-req: a logged-in user with a completed onboarding voice profile and (ideally) some demo posts via `/linkedin/connect` in demo mode.
+
+**1. Workshop scoring + feedback**
+- Open `/workshop`, start a session, send a seed message
+- Assistant returns a draft. Confirm a small voice/perf score badge appears under the draft along with "This sounds like me" / "Not quite" buttons
+- Click "Not quite" → write a short note → "Remember this". Confirm the note is saved (UI shows "Saved.")
+
+**2. Get Inspired**
+- Click the dashboard "Get inspired" card
+- First load auto-generates 6 ideas. Each shows a source tag, title, angle, "why this" rationale
+- Click "Workshop this idea" → confirm the user lands in `/workshop/:id` with a seeded user message
+- Try Save / Not for me — confirm the card state updates
+
+**3. Improve My Draft**
+- Click the dashboard "Improve my draft" card
+- Paste a real draft and pick a KPI → Analyze
+- Confirm voice + performance scores render with rationales
+- Confirm two paths render (voice / performance) when they meaningfully diverge, or one balanced path when they don't
+- Accept one recommendation → confirm the working draft updates
+- Run "Optimise for performance" → confirm the rewritten draft + "what changed" panel render
+- Click "Finalise this draft" → confirm a `generated_content` row is created (check via dashboard recent drafts)
+
+**4. Learned preferences**
+- After producing 3+ "Not quite" / accepted-suggestion / manual-edit feedback events, visit `/voice/edit`
+- Scroll to "Learned preferences". Confirm a "Suggested" pattern appears with confidence + evidence count
+- Confirm one and reject one. Both should disappear from the suggested list (confirmed moves to Active)
+
+**5. Alignment widget**
+- After scoring 2+ drafts (any combination of Workshop drafts and Improve sessions), reload the dashboard
+- Confirm the right-rail widget shows voice and performance averages, a sparkline if you have multi-day data, and one recommended action sentence
+
+**Backend smoke test** (without UI):
+```bash
+# Score a draft for the logged-in user (token in $TOKEN)
+curl -X POST http://localhost:4000/content/score \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"draft_content":"Most teams overcomplicate strategy. Pick the one thing.","selected_kpi":"comments"}' | jq
+
+# List learned preferences
+curl http://localhost:4000/feedback/preferences -H "Authorization: Bearer $TOKEN" | jq
+
+# Refresh inspiration
+curl -X POST http://localhost:4000/content/inspiration/refresh -H "Authorization: Bearer $TOKEN" | jq
+```
 
 ## Resolved questions
 

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import { CoachBubble, UserBubble } from "../components/ChatBubble";
+import { FeedbackControls } from "../components/Feedback";
+import { InlineScoreBadge, type ScoreShape } from "../components/Score";
 
 type Stance = "clarify" | "draft" | "refine";
 
@@ -22,6 +24,7 @@ type WorkshopReply = {
   draft: string | null;
   validation_flags: Array<{ rule: string; count?: number }>;
   history_used: boolean;
+  score: ScoreShape | null;
 };
 
 export function Workshop() {
@@ -104,7 +107,11 @@ export function Workshop() {
           message_id: res.reply.message_id,
           role: "assistant",
           content: JSON.stringify({ message: res.reply.message, draft: res.reply.draft }),
-          metadata: { stance: res.reply.stance, validation_flags: res.reply.validation_flags },
+          metadata: {
+            stance: res.reply.stance,
+            validation_flags: res.reply.validation_flags,
+            score: res.reply.score,
+          },
           created_at: new Date().toISOString(),
         },
       ]);
@@ -190,6 +197,7 @@ export function Workshop() {
             }
             const parsed = parseAssistant(m.content);
             const stance = (m.metadata?.stance as Stance | undefined) ?? "draft";
+            const score = (m.metadata?.score as ScoreShape | undefined) ?? null;
             const saved = savedDraftIds[m.message_id];
             return (
               <CoachBubble key={m.message_id}>
@@ -210,24 +218,26 @@ export function Workshop() {
                 {parsed.message ? (
                   <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{parsed.message}</p>
                 ) : null}
-                {parsed.draft ? (
-                  <div
-                    style={{
-                      marginTop: 16,
-                      padding: 18,
-                      background: "var(--color-off-white)",
-                      borderLeft: "3px solid var(--color-pink)",
-                      borderRadius: "var(--radius-md)",
-                      whiteSpace: "pre-wrap",
-                      fontSize: 15.5,
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    {parsed.draft}
+                {parsed.draft ? <DraftBody draft={parsed.draft} /> : null}
+                {parsed.draft && score ? (
+                  <div style={{ marginTop: 10 }}>
+                    <InlineScoreBadge score={score} />
+                    {score.tradeoff_summary ? (
+                      <p
+                        style={{
+                          margin: "8px 0 0",
+                          fontSize: 13,
+                          color: "var(--color-pink)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {score.tradeoff_summary}
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
                 {parsed.draft ? (
-                  <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+                  <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button
                       className="btn btn-secondary"
                       style={{ padding: "10px 16px", fontSize: 14 }}
@@ -244,6 +254,17 @@ export function Workshop() {
                       Copy
                     </button>
                   </div>
+                ) : null}
+                {parsed.draft ? (
+                  <FeedbackControls
+                    ctx={{
+                      surface: "workshop",
+                      source_id: workshopId ?? undefined,
+                      raw_content_after: parsed.draft,
+                      voice_score: score?.voice_score,
+                      performance_score: score?.performance_score,
+                    }}
+                  />
                 ) : null}
               </CoachBubble>
             );
@@ -292,6 +313,41 @@ export function Workshop() {
           </div>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function DraftBody({ draft }: { draft: string }) {
+  // Split on blank lines so paragraph breaks render as visible spacing,
+  // regardless of how `pre-wrap` would have displayed the raw newlines.
+  const paragraphs = draft
+    .split(/\n[\t ]*\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return (
+    <div
+      style={{
+        marginTop: 16,
+        padding: 18,
+        background: "var(--color-off-white)",
+        borderLeft: "3px solid var(--color-pink)",
+        borderRadius: "var(--radius-md)",
+        fontSize: 15.5,
+        lineHeight: 1.65,
+      }}
+    >
+      {paragraphs.map((para, i) => (
+        <p
+          key={i}
+          style={{
+            margin: 0,
+            marginBottom: i === paragraphs.length - 1 ? 0 : 14,
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {para}
+        </p>
+      ))}
     </div>
   );
 }

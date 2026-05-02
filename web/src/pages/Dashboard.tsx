@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../auth/context";
+import { AlignmentWidget } from "../components/AlignmentWidget";
 
 type VoiceProfile = {
   archetype: string;
@@ -98,6 +99,80 @@ export function Dashboard() {
             gap: 24,
           }}
         >
+          <div className="stack-4">
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: 16,
+              }}
+            >
+              <Link
+                to="/inspire"
+                className="card"
+                style={{
+                  textDecoration: "none",
+                  color: "inherit",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  padding: 22,
+                  background: "var(--color-navy)",
+                  color: "var(--color-white)",
+                  borderColor: "transparent",
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: "var(--font-display)",
+                    fontSize: 11,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    color: "var(--color-pink)",
+                    fontWeight: 700,
+                  }}
+                >
+                  Get inspired
+                </span>
+                <h3 style={{ margin: 0, color: "var(--color-white)" }}>
+                  Ideas built from what works for you.
+                </h3>
+                <p style={{ margin: 0, fontSize: 14, opacity: 0.78 }}>
+                  Adjacent angles, voice gaps, evidence from your top posts.
+                </p>
+              </Link>
+
+              <Link
+                to="/improve"
+                className="card"
+                style={{
+                  textDecoration: "none",
+                  color: "inherit",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  padding: 22,
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: "var(--font-display)",
+                    fontSize: 11,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    color: "var(--color-pink)",
+                    fontWeight: 700,
+                  }}
+                >
+                  Improve my draft
+                </span>
+                <h3 style={{ margin: 0 }}>Sharpen something you already wrote.</h3>
+                <p style={{ margin: 0, fontSize: 14, color: "var(--text-on-light-muted)" }}>
+                  Paste a draft, pick a KPI, get voice + performance recs.
+                </p>
+              </Link>
+            </div>
+
           <section className="card stack-5">
             <div>
               <h2 style={{ marginBottom: 4 }}>Workshop a post</h2>
@@ -140,8 +215,10 @@ export function Dashboard() {
               </div>
             ) : null}
           </section>
+          </div>
 
           <aside className="stack-4">
+            <AlignmentWidget />
             {archetype ? (
               <Link
                 to="/voice/edit"

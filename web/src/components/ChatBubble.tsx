@@ -17,7 +17,7 @@ export function CoachBubble({ children }: { children: React.ReactNode }) {
         }}
         aria-hidden
       >
-        <Logo variant="square" height={26} />
+        <Logo variant="square-light" height={26} />
       </div>
       <div
         style={{

@@ -39,6 +39,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Link to="/dashboard" style={{ color: "var(--text-on-dark)", fontWeight: 500 }}>
               Dashboard
             </Link>
+            <Link to="/inspire" style={{ color: "var(--text-on-dark)", fontWeight: 500 }}>
+              Inspired
+            </Link>
+            <Link to="/improve" style={{ color: "var(--text-on-dark)", fontWeight: 500 }}>
+              Improve
+            </Link>
             <Link to="/workshop" style={{ color: "var(--text-on-dark)", fontWeight: 500 }}>
               Workshop
             </Link>

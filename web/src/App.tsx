@@ -3,6 +3,8 @@ import { AuthProvider, useAuth } from "./auth/context";
 import { AppShell } from "./components/Shell";
 import { Dashboard } from "./pages/Dashboard";
 import { EditVoice } from "./pages/EditVoice";
+import { GetInspired } from "./pages/GetInspired";
+import { ImproveDraft } from "./pages/ImproveDraft";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { Onboarding } from "./pages/Onboarding";
@@ -94,6 +96,30 @@ function Routing() {
         element={
           <ProtectedRoute requireOnboarding>
             <EditVoice />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/inspire"
+        element={
+          <ProtectedRoute requireOnboarding>
+            <GetInspired />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/improve"
+        element={
+          <ProtectedRoute requireOnboarding>
+            <ImproveDraft />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/improve/:id"
+        element={
+          <ProtectedRoute requireOnboarding>
+            <ImproveDraft />
           </ProtectedRoute>
         }
       />
