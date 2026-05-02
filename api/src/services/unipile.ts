@@ -138,26 +138,20 @@ export async function startHostedAuth(
 /**
  * Pull a user's LinkedIn post history from Unipile.
  *
- * Unipile's posts API has shifted shape across versions. We try the most
- * current path first (`/api/v1/users/me/posts?account_id=...`), then fall
- * back to the older flat path (`/api/v1/posts?account_id=...`). We log each
- * attempt verbosely so when an integration breaks we can see which
- * endpoint succeeded, what HTTP status came back, and what fields the
- * response actually contained.
+ * Two-step flow because Unipile's posts API is keyed on the LinkedIn
+ * `public_identifier` (the user's vanity slug), not on the Unipile
+ * `account_id`:
+ *
+ *   1. GET /api/v1/accounts/{account_id} → returns connected user metadata
+ *      including their LinkedIn public_identifier (typically nested under
+ *      connection_params.im).
+ *   2. GET /api/v1/users/{public_identifier}/posts?account_id={account_id}
+ *      → returns the user's own LinkedIn posts.
  *
  * Field mapping is permissive: we accept several common aliases for post
  * content, posted-at timestamp, and engagement metrics so a Unipile API
  * change does not silently produce empty rows.
  */
-
-const ENDPOINTS = [
-  // Preferred: scoped under the connected user.
-  (dsn: string, accountId: string) =>
-    `https://${dsn}/api/v1/users/me/posts?account_id=${encodeURIComponent(accountId)}&limit=100`,
-  // Legacy flat endpoint that older Unipile API versions exposed.
-  (dsn: string, accountId: string) =>
-    `https://${dsn}/api/v1/posts?account_id=${encodeURIComponent(accountId)}&limit=100`,
-];
 
 export async function fetchPostHistory(unipileAccountId: string): Promise<UnipilePost[]> {
   if (!isUnipileConfigured()) {
@@ -165,57 +159,125 @@ export async function fetchPostHistory(unipileAccountId: string): Promise<Unipil
     return DEMO_POSTS;
   }
 
-  let lastError: string | null = null;
-
-  for (const buildUrl of ENDPOINTS) {
-    const url = buildUrl(config.unipile.dsn, unipileAccountId);
-    console.log("[unipile] fetchPostHistory GET", url);
-    let res: Response;
-    try {
-      res = await fetch(url, {
-        headers: {
-          "X-API-KEY": config.unipile.apiKey,
-          Accept: "application/json",
-        },
-      });
-    } catch (err) {
-      lastError = `network: ${(err as Error).message}`;
-      console.error("[unipile] fetch threw:", lastError);
-      continue;
-    }
-
-    const bodyText = await res.text();
-
-    if (!res.ok) {
-      lastError = `${res.status} ${bodyText.slice(0, 400)}`;
-      console.warn(`[unipile] ${url} -> ${res.status}`, bodyText.slice(0, 400));
-      continue;
-    }
-
-    let json: { items?: unknown[]; data?: unknown[]; results?: unknown[] };
-    try {
-      json = JSON.parse(bodyText);
-    } catch {
-      console.error("[unipile] response was not valid JSON:", bodyText.slice(0, 400));
-      lastError = "invalid_json";
-      continue;
-    }
-
-    const items = (json.items ?? json.data ?? json.results ?? []) as Array<Record<string, unknown>>;
-    console.log(
-      `[unipile] ${url} returned ${items.length} item(s). Top-level keys: ${Object.keys(json).join(", ") || "(none)"}`,
+  const profileId = await resolveLinkedInProfileId(unipileAccountId);
+  if (!profileId) {
+    throw new Error(
+      "Unipile account fetch did not return a LinkedIn public_identifier we could use for posts",
     );
-    if (items.length > 0) {
-      console.log(
-        "[unipile] sample item keys:",
-        Object.keys(items[0] ?? {}).join(", "),
-      );
-    }
-
-    return items.map(mapUnipilePost);
   }
 
-  throw new Error(`Unipile post fetch failed: ${lastError ?? "no endpoints succeeded"}`);
+  const url = `https://${config.unipile.dsn}/api/v1/users/${encodeURIComponent(profileId)}/posts?account_id=${encodeURIComponent(unipileAccountId)}&limit=100`;
+  console.log("[unipile] fetchPostHistory GET", url);
+
+  const res = await fetch(url, {
+    headers: {
+      "X-API-KEY": config.unipile.apiKey,
+      Accept: "application/json",
+    },
+  });
+
+  const bodyText = await res.text();
+  if (!res.ok) {
+    console.error(`[unipile] posts fetch failed ${res.status}: ${bodyText.slice(0, 400)}`);
+    throw new Error(`Unipile posts fetch failed: ${res.status}`);
+  }
+
+  let json: { items?: unknown[]; data?: unknown[]; results?: unknown[] };
+  try {
+    json = JSON.parse(bodyText);
+  } catch {
+    console.error("[unipile] posts response was not valid JSON:", bodyText.slice(0, 400));
+    throw new Error("Unipile posts response was not valid JSON");
+  }
+
+  const items = (json.items ?? json.data ?? json.results ?? []) as Array<Record<string, unknown>>;
+  console.log(
+    `[unipile] posts returned ${items.length} item(s). Top-level keys: ${Object.keys(json).join(", ") || "(none)"}`,
+  );
+  if (items.length > 0) {
+    console.log("[unipile] sample post item keys:", Object.keys(items[0] ?? {}).join(", "));
+  }
+
+  return items.map(mapUnipilePost);
+}
+
+/**
+ * Look up the LinkedIn public_identifier (or other usable user ID) for the
+ * connected Unipile account. Tries common nest paths because Unipile has
+ * shipped a few different account-payload shapes.
+ */
+async function resolveLinkedInProfileId(unipileAccountId: string): Promise<string | null> {
+  const url = `https://${config.unipile.dsn}/api/v1/accounts/${encodeURIComponent(unipileAccountId)}`;
+  console.log("[unipile] resolveLinkedInProfileId GET", url);
+
+  const res = await fetch(url, {
+    headers: {
+      "X-API-KEY": config.unipile.apiKey,
+      Accept: "application/json",
+    },
+  });
+
+  const bodyText = await res.text();
+  if (!res.ok) {
+    console.error(`[unipile] account fetch failed ${res.status}: ${bodyText.slice(0, 400)}`);
+    return null;
+  }
+
+  let account: Record<string, unknown>;
+  try {
+    account = JSON.parse(bodyText);
+  } catch {
+    console.error("[unipile] account response was not valid JSON:", bodyText.slice(0, 400));
+    return null;
+  }
+
+  console.log("[unipile] account top-level keys:", Object.keys(account).join(", "));
+
+  // Hunt through likely nest paths for the LinkedIn public_identifier.
+  const candidates: unknown[] = [
+    deepGet(account, ["connection_params", "im", "public_identifier"]),
+    deepGet(account, ["connection_params", "public_identifier"]),
+    deepGet(account, ["params", "public_identifier"]),
+    deepGet(account, ["user", "public_identifier"]),
+    deepGet(account, ["public_identifier"]),
+    // Fallbacks: some versions return only an entity_urn (urn:li:fsd_profile:XYZ).
+    // Strip the prefix and use the bare ID.
+    stripUrnPrefix(deepGet(account, ["connection_params", "im", "id"])),
+    stripUrnPrefix(deepGet(account, ["params", "entity_urn"])),
+    stripUrnPrefix(deepGet(account, ["entity_urn"])),
+  ];
+
+  for (const c of candidates) {
+    if (typeof c === "string" && c.length > 0) {
+      console.log("[unipile] using profile identifier:", c);
+      return c;
+    }
+  }
+
+  console.warn(
+    "[unipile] could not find public_identifier in account payload. First 800 chars:",
+    bodyText.slice(0, 800),
+  );
+  return null;
+}
+
+function deepGet(obj: unknown, path: string[]): unknown {
+  let cur: unknown = obj;
+  for (const key of path) {
+    if (cur && typeof cur === "object" && !Array.isArray(cur)) {
+      cur = (cur as Record<string, unknown>)[key];
+    } else {
+      return undefined;
+    }
+  }
+  return cur;
+}
+
+function stripUrnPrefix(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  // urn:li:fsd_profile:ABC123 → ABC123
+  const match = value.match(/[^:]+$/);
+  return match ? match[0] : value;
 }
 
 function mapUnipilePost(item: Record<string, unknown>): UnipilePost {
