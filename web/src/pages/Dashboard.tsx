@@ -161,25 +161,53 @@ export function Dashboard() {
               </Link>
             </div>
 
-          <section className="card stack-5">
-            <div>
-              <h2 style={{ marginBottom: 4 }}>Workshop a post</h2>
-              <p className="muted" style={{ margin: 0 }}>
-                Open a back-and-forth chat. Bring an idea or ask me to find one.
-              </p>
-            </div>
-            <button
-              className="btn btn-primary"
-              onClick={startWorkshop}
-              disabled={starting}
-              style={{ alignSelf: "flex-start" }}
+          <section className="card stack-4">
+            <div
+              style={{
+                display: "flex",
+                gap: 16,
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+              }}
             >
-              {starting ? "Starting..." : "Start a new workshop"}
-            </button>
+              <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+                <h2 style={{ marginBottom: 4 }}>Workshop a post</h2>
+                <p className="muted" style={{ margin: 0 }}>
+                  Open a back-and-forth chat. Bring an idea or ask me to find one.
+                </p>
+              </div>
+              <button
+                className="btn btn-primary"
+                onClick={startWorkshop}
+                disabled={starting}
+                style={{ flexShrink: 0 }}
+              >
+                {starting ? "Starting..." : "Start a new workshop"}
+              </button>
+            </div>
             {sessions.length > 0 ? (
               <div className="stack-2">
-                <span className="field-label">Recent sessions</span>
-                {sessions.slice(0, 4).map((s) => (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span className="field-label">Recent sessions</span>
+                  {sessions.length > 3 ? (
+                    <Link
+                      to="/workshops"
+                      style={{
+                        fontFamily: "var(--font-display)",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        letterSpacing: "0.16em",
+                        textTransform: "uppercase",
+                        color: "var(--color-pink)",
+                        textDecoration: "none",
+                      }}
+                    >
+                      View all →
+                    </Link>
+                  ) : null}
+                </div>
+                {sessions.slice(0, 3).map((s) => (
                   <Link
                     key={s.workshop_id}
                     to={`/workshop/${s.workshop_id}`}

@@ -10,6 +10,7 @@ import { Login } from "./pages/Login";
 import { Onboarding } from "./pages/Onboarding";
 import { Signup } from "./pages/Signup";
 import { Workshop } from "./pages/Workshop";
+import { Workshops } from "./pages/Workshops";
 
 function ProtectedRoute({
   children,
@@ -120,6 +121,14 @@ function Routing() {
         element={
           <ProtectedRoute requireOnboarding>
             <ImproveDraft />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/workshops"
+        element={
+          <ProtectedRoute requireOnboarding>
+            <Workshops />
           </ProtectedRoute>
         }
       />
